@@ -1,0 +1,9 @@
+name: "backup-dashboard"
+display_name: "Fedora Backup Dashboard"
+type: "web-app"
+language: "python"
+status: "active"
+port: 8090
+systemd_service: "backup-dashboard"
+description: "Webové rozhraní pro správu 3-vrstvového backup systému (Snapper + Btrfs sync + Borg)"
+tags: [backup, btrfs, snapper, borg, fastapi]

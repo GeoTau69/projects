@@ -1,0 +1,9 @@
+*.backup-*
+*.backup
+*.enc-fix-*
+__pycache__/
+*.pyc
+logs/
+static/.keep
+/tmp/
+.claude/

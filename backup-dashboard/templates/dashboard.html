@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛡️ Fedora Backup Dashboard</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --bg2: #161b22;
+            --bg3: #21262d;
+            --border: #30363d;
+            --text: #e6edf3;
+            --text2: #8b949e;
+            --green: #3fb950;
+            --yellow: #d29922;
+            --red: #f85149;
+            --blue: #58a6ff;
+            --purple: #bc8cff;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg2);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { font-size: 20px; font-weight: 600; }
+        .header .meta { color: var(--text2); font-size: 13px; }
+
+        /* Health banner */
+        .health-banner {
+            padding: 12px 24px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        .health-ok { background: #0d2818; color: var(--green); border-bottom: 1px solid #196c2e; }
+        .health-warning { background: #2a1e00; color: var(--yellow); border-bottom: 1px solid #5c4100; }
+        .health-error { background: #2d0a0a; color: var(--red); border-bottom: 1px solid #6e2b2b; }
+
+        /* Grid layout */
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            padding: 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .full-width { grid-column: 1 / -1; }
+
+        /* Cards */
+        .card {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .card-header {
+            background: var(--bg3);
+            padding: 12px 16px;
+            font-weight: 600;
+            font-size: 14px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .card-body { padding: 16px; }
+
+        /* Disk meters */
+        .disk-info {
+            display: flex;
+            gap: 32px;
+            padding: 8px 0;
+        }
+        .disk-item { flex: 1; }
+        .disk-label { font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+        .disk-bar {
+            height: 8px;
+            background: var(--bg3);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 6px 0;
+        }
+        .disk-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        .disk-fill.ok { background: var(--green); }
+        .disk-fill.warn { background: var(--yellow); }
+        .disk-fill.danger { background: var(--red); }
+        .disk-values { font-size: 13px; color: var(--text2); }
+        .disk-values strong { color: var(--text); }
+
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th {
+            text-align: left;
+            padding: 8px 12px;
+            color: var(--text2);
+            font-weight: 500;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border);
+        }
+        td {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        tr:hover { background: var(--bg3); }
+        tr:last-child td { border-bottom: none; }
+
+        /* Buttons */
+        .btn {
+            padding: 6px 14px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg3);
+            color: var(--text);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn:hover { background: var(--border); }
+        .btn-primary { background: #1f6feb; border-color: #1f6feb; }
+        .btn-primary:hover { background: #388bfd; }
+        .btn-danger { background: transparent; border-color: var(--red); color: var(--red); }
+        .btn-danger:hover { background: var(--red); color: white; }
+        .btn-warning { background: transparent; border-color: var(--yellow); color: var(--yellow); }
+        .btn-warning:hover { background: var(--yellow); color: black; }
+        .btn-success { background: #238636; border-color: #238636; }
+        .btn-success:hover { background: #2ea043; }
+        .btn-sm { padding: 3px 8px; font-size: 12px; }
+
+        /* Forms */
+        .input-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 6px 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 13px;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--blue);
+            box-shadow: 0 0 0 3px rgba(88,166,255,0.15);
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .badge-green { background: #0d2818; color: var(--green); }
+        .badge-yellow { background: #2a1e00; color: var(--yellow); }
+        .badge-red { background: #2d0a0a; color: var(--red); }
+        .badge-blue { background: #0c2d6b; color: var(--blue); }
+        .badge-purple { background: #271052; color: var(--purple); }
+
+        /* Timer cards */
+        .timer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+        .timer-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+        }
+        .timer-card .timer-name { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+        .timer-card .timer-detail { font-size: 12px; color: var(--text2); }
+
+        /* Log */
+        .log-list {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .log-list .log-line { padding: 3px 0; border-bottom: 1px solid var(--border); }
+        .log-list .log-ok { color: var(--green); }
+        .log-list .log-fail { color: var(--red); }
+
+        /* Toast notifications */
+        .toast-container {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .toast {
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            animation: slideIn 0.3s ease, fadeOut 0.3s ease 4s forwards;
+            max-width: 400px;
+        }
+        .toast-success { background: #238636; color: white; }
+        .toast-error { background: #da3633; color: white; }
+        .toast-info { background: #1f6feb; color: white; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes fadeOut { to { opacity: 0; transform: translateY(-10px); } }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 500;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal h3 { margin-bottom: 16px; }
+        .modal pre {
+            background: var(--bg);
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        /* Spinner */
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid var(--border);
+            border-top-color: var(--blue);
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .grid { grid-template-columns: 1fr; }
+            .disk-info { flex-direction: column; gap: 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+        <style>
+            .header-nav { display: flex; gap: 12px; align-items: center; }
+            .btn-docs {
+                padding: 8px 16px;
+                background: var(--bg3);
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                color: var(--blue);
+                text-decoration: none;
+                font-size: 14px;
+                font-weight: 500;
+                transition: all 0.2s;
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .btn-docs:hover {
+                background: var(--bg2);
+                border-color: var(--blue);
+                transform: translateY(-1px);
+            }
+            .btn-golden {
+                padding: 8px 16px;
+                background: var(--yellow);
+                border: none;
+                border-radius: 6px;
+                color: #0d1117;
+                font-size: 14px;
+                font-weight: 700;
+                cursor: pointer;
+                transition: all 0.2s;
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .btn-golden:hover {
+                opacity: 0.85;
+                transform: translateY(-1px);
+            }
+        </style>
+    <h1>🛡️ Fedora Backup Dashboard</h1>
+        <div class="header-nav">
+            <a href="/docs" class="btn-docs">📖 Dokumentace</a>
+            <a href="/git" class="btn-docs">🔀 Verze</a>
+            <button class="btn-golden" onclick="newGoldenSnapshot()" title="Vytvoří nový GOLDEN snapshot a deaktivuje starý">⭐ Nový Golden</button>
+        </div>
+    <div class="meta">
+        Poslední refresh: <span id="last-refresh">{{ now }}</span>
+        &nbsp;
+        <button class="btn btn-sm" onclick="location.reload()">↻ Refresh</button>
+    </div>
+</div>
+
+<!-- Health Banner -->
+{% if health.status == "ok" %}
+<div class="health-banner health-ok">✅ Všechny systémy v pořádku</div>
+{% elif health.status == "warning" %}
+<div class="health-banner health-warning">
+    ⚠️ Varování: {{ health.warnings | join(", ") }}
+</div>
+{% else %}
+<div class="health-banner health-error">
+    🚨 {{ health.errors | join(" | ") }}
+    {% if health.warnings %} ⚠️ {{ health.warnings | join(", ") }}{% endif %}
+</div>
+{% endif %}
+
+<!-- Toast Container -->
+<div class="toast-container" id="toasts"></div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+    <div class="modal" id="modal-content">
+        <h3 id="modal-title"></h3>
+        <pre id="modal-body"></pre>
+        <br>
+        <button class="btn" onclick="document.getElementById('modal-overlay').classList.remove('active')">Zavřít</button>
+    </div>
+</div>
+
+<div class="grid">
+
+    <!-- Disk Status -->
+    <div class="card full-width">
+        <div class="card-header">💾 Disky</div>
+        <div class="card-body">
+            <div class="disk-info">
+                <div class="disk-item">
+                    <div class="disk-label">Root filesystem (/)</div>
+                    <div class="disk-bar">
+                        <div class="disk-fill {{ 'danger' if disk_root.percent|replace('%','')|int > 80 else ('warn' if disk_root.percent|replace('%','')|int > 60 else 'ok') }}"
+                             style="width: {{ disk_root.percent }}"></div>
+                    </div>
+                    <div class="disk-values">
+                        <strong>{{ disk_root.used }}</strong> / {{ disk_root.total }} ({{ disk_root.percent }} využito) — volno {{ disk_root.avail }}
+                    </div>
+                </div>
+                <div class="disk-item">
+                    <div class="disk-label">
+                        Backup disk (/mnt/fedora-backups)
+                        {% if disk_backup.mounted %}
+                            <span class="badge badge-green">MOUNTED</span>
+                        {% else %}
+                            <span class="badge badge-red">UNMOUNTED</span>
+                        {% endif %}
+                    </div>
+                    {% if disk_backup.mounted %}
+                    <div class="disk-bar">
+                        <div class="disk-fill {{ 'danger' if disk_backup.percent|replace('%','')|int > 80 else ('warn' if disk_backup.percent|replace('%','')|int > 60 else 'ok') }}"
+                             style="width: {{ disk_backup.percent }}"></div>
+                    </div>
+                    <div class="disk-values">
+                        <strong>{{ disk_backup.used }}</strong> / {{ disk_backup.total }} ({{ disk_backup.percent }} využito) — volno {{ disk_backup.avail }}
+                    </div>
+                    {% else %}
+                    <div class="disk-values" style="color: var(--red)">Disk není připojen! Zálohy nefungují.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timers -->
+    <div class="card full-width">
+        <div class="card-header">⏰ Automatické úlohy</div>
+        <div class="card-body">
+            <div class="timer-grid">
+                {% for timer in timers %}
+                <div class="timer-card">
+                    <div class="timer-name">
+                        {% if timer.active %}
+                            <span class="badge badge-green">ACTIVE</span>
+                        {% else %}
+                            <span class="badge badge-red">INACTIVE</span>
+                        {% endif %}
+                        {{ timer.label }}
+                    </div>
+                    <div class="timer-detail">Příští: {{ timer.next_run[:25] if timer.next_run != '?' else '?' }}</div>
+                    <div class="timer-detail">Poslední: {{ timer.last_trigger[:25] if timer.last_trigger != '?' else '?' }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Snapper Snapshots -->
+    <div class="card">
+        <div class="card-header">
+            📸 Snapper Snapshoty (Vrstva 1)
+            <span class="badge badge-blue">{{ snapshots|length }} snapshotů</span>
+        </div>
+        <div class="card-body">
+            <div class="input-group">
+                <input type="text" id="snap-desc" placeholder="Popis snapshotu (např. Před instalací NVIDIA)..." value="Manual snapshot">
+                <button class="btn btn-success" onclick="createSnapshot()">+ Snapshot</button>
+            </div>
+            <div style="max-height: 400px; overflow-y: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Typ</th>
+                            <th>Datum</th>
+                            <th>Popis</th>
+                            <th>Akce</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for snap in snapshots|reverse %}
+                        <tr>
+                            <td><strong>{{ snap.number }}</strong></td>
+                            <td>
+                                {% if snap.type == "single" %}
+                                    <span class="badge badge-blue">single</span>
+                                {% elif snap.type == "pre" %}
+                                    <span class="badge badge-yellow">pre</span>
+                                {% elif snap.type == "post" %}
+                                    <span class="badge badge-purple">post</span>
+                                {% else %}
+                                    <span class="badge badge-green">{{ snap.type }}</span>
+                                {% endif %}
+                            </td>
+                            <td style="font-size:12px">{{ snap.date }}</td>
+                            <td style="font-size:12px">{{ snap.description[:40] }}</td>
+                            <td>
+                                <button class="btn btn-sm" onclick="showDiff({{ snap.number }})" title="Zobrazit změny">📋</button>
+                                {% if snap.number > 1 %}
+                                <button class="btn btn-sm btn-warning" onclick="confirmRollback({{ snap.number }})" title="Rollback">⏪</button>
+                                {% if "GOLDEN" not in snap.description %}
+                                <button class="btn btn-sm btn-danger" onclick="confirmDeleteSnap({{ snap.number }})" title="Smazat">🗑</button>
+                                {% endif %}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Borg Archives -->
+    <div class="card">
+        <div class="card-header">
+            🔐 Borg Archivy (Vrstva 3)
+            <span class="badge badge-purple">{{ archives|length }} archivů</span>
+        </div>
+        <div class="card-body">
+            <div class="input-group">
+                <input type="text" id="borg-comment" placeholder="Komentář k záloze..." value="Manual backup">
+                <button class="btn btn-success" onclick="createBorgBackup()">+ Backup</button>
+            </div>
+            <div style="max-height: 400px; overflow-y: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Archiv</th>
+                            <th>Datum</th>
+                            <th>Akce</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for arch in archives %}
+                        <tr>
+                            <td style="font-size:12px"><strong>{{ arch.name }}</strong></td>
+                            <td style="font-size:12px">{{ arch.time }}</td>
+                            <td>
+                                <button class="btn btn-sm" onclick="browseArchive('{{ arch.name }}')" title="Procházet">📂</button>
+                                <button class="btn btn-sm btn-success" onclick="restoreArchive('{{ arch.name }}')" title="Obnovit">♻️</button>
+                                <button class="btn btn-sm btn-danger" onclick="confirmDeleteBorg('{{ arch.name }}')" title="Smazat">🗑</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sync Status -->
+    <div class="card">
+        <div class="card-header">
+            🔄 Btrfs Sync (Vrstva 2)
+            <button class="btn btn-sm btn-primary" onclick="runSync()">Sync teď</button>
+        </div>
+        <div class="card-body">
+            <p style="font-size:13px; color: var(--text2); margin-bottom: 12px;">
+                Snapshoty synchronizované na backup disk:
+            </p>
+            {% if sync_snaps %}
+            <table>
+                <tbody>
+                    {% for s in sync_snaps %}
+                    <tr><td style="font-size:13px">📁 {{ s }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color: var(--text2)">Žádné synchronizované snapshoty</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Activity Log -->
+    <div class="card">
+        <div class="card-header">
+            📋 Log aktivit
+            <div style="display: flex; gap: 6px;">
+                <button class="btn btn-sm" onclick="exportLog()" title="Export logu">📥 Export</button>
+                <button class="btn btn-sm btn-danger" onclick="clearLog()" title="Smazat log">🗑 Smazat</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="log-list" id="log-container">
+                {% for line in log_lines %}
+                <div class="log-line {{ 'log-ok' if '[OK]' in line else ('log-fail' if '[FAIL]' in line else '') }}">{{ line.strip() }}</div>
+                {% endfor %}
+                {% if not log_lines %}
+                <div class="log-line" style="color: var(--text2)">Žádné záznamy</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Full Backup Flow -->
+    <div class="card">
+        <div class="card-header">
+            🚀 Kompletní Backup Flow
+            <span class="badge badge-green">3-v-1</span>
+        </div>
+        <div class="card-body">
+            <p style="font-size:13px; color: var(--text2); margin-bottom: 12px;">
+                Provede kompletní zálohu: <strong>Snapshot</strong> → <strong>Borg backup</strong> → <strong>Sync na disk</strong>
+            </p>
+            <div class="input-group">
+                <input type="text" id="full-desc" placeholder="Popis (např. Před upgradem na Fedora 44)..." value="Full backup">
+                <button class="btn btn-success" onclick="runFullFlow()" id="btn-full-flow">🚀 Spustit vše</button>
+            </div>
+            <div id="full-flow-progress" style="display:none; margin-top: 12px;">
+                <div class="spinner"></div> <span id="full-flow-status" style="font-size: 13px; margin-left: 8px;">Probíhá...</span>
+            </div>
+            <div id="full-flow-results" style="margin-top: 12px; font-size: 13px;"></div>
+        </div>
+    </div>
+
+    <!-- Nuclear Delete -->
+    <div class="card" style="border-color: #6e2b2b;">
+        <div class="card-header" style="background: #2d0a0a;">
+            ☢️ Kompletní smazání VŠECH záloh
+            <span class="badge badge-red">NEBEZPEČNÉ</span>
+        </div>
+        <div class="card-body">
+            <p style="font-size:13px; color: var(--red); margin-bottom: 12px;">
+                ⚠️ Smaže VŠECHNY snapshoty, Borg archivy i sync snapshoty. Tato akce je <strong>NEVRATNÁ</strong>!
+            </p>
+            <details>
+                <summary style="cursor: pointer; color: var(--text2); font-size: 13px; margin-bottom: 12px;">
+                    🔒 Klikni pro otevření (chráněno heslem)
+                </summary>
+                <div style="margin-top: 12px;">
+                    <div class="input-group">
+                        <input type="password" id="nuclear-pass" placeholder="Zadejte heslo..." style="flex: 0.5;">
+                        <input type="text" id="nuclear-confirm" placeholder='Napište: SMAZAT VSE' style="flex: 0.5;">
+                    </div>
+                    <button class="btn btn-danger" onclick="runNuclearDelete()" id="btn-nuclear" style="width: 100%;">
+                        ☢️ SMAZAT VŠECHNY ZÁLOHY
+                    </button>
+                    <div id="nuclear-results" style="margin-top: 12px; font-size: 13px;"></div>
+                </div>
+            </details>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // === Toast Notifications ===
+    function toast(message, type = 'info') {
+        const container = document.getElementById('toasts');
+        const el = document.createElement('div');
+        el.className = `toast toast-${type}`;
+        el.textContent = message;
+        container.appendChild(el);
+        setTimeout(() => el.remove(), 5000);
+    }
+
+    // === API Calls ===
+    async function apiCall(url, method = 'POST', body = null) {
+        try {
+            const opts = { method };
+            if (body) {
+                opts.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+                opts.body = new URLSearchParams(body);
+            }
+            const resp = await fetch(url, opts);
+            const data = await resp.json();
+            if (data.success) {
+                toast(data.message, 'success');
+            } else {
+                toast(data.message || 'Chyba', 'error');
+            }
+            return data;
+        } catch (e) {
+            toast('Chyba komunikace: ' + e.message, 'error');
+            return { success: false };
+        }
+    }
+
+    // === Snapshot Actions ===
+    async function createSnapshot() {
+        const desc = document.getElementById('snap-desc').value || 'Manual snapshot';
+        toast('Vytvářím snapshot...', 'info');
+        const result = await apiCall('/api/snapshot/create', 'POST', { description: desc });
+        if (result.success) setTimeout(() => location.reload(), 1500);
+    }
+
+    function confirmDeleteSnap(num) {
+        if (confirm(`Opravdu smazat snapshot #${num}?`)) {
+            apiCall(`/api/snapshot/delete/${num}`).then(r => { if (r.success) setTimeout(() => location.reload(), 1000); });
+        }
+    }
+
+    function confirmRollback(num) {
+        if (confirm(`⚠️ ROLLBACK na snapshot #${num}?\n\nToto vrátí systém do stavu snapshotu.\nPo potvrzení bude nutný RESTART!`)) {
+            if (confirm(`Opravdu? Snapshot #${num} - tato akce je nevratná!`)) {
+                apiCall(`/api/snapshot/rollback/${num}`).then(r => {
+                    if (r.success && r.needs_reboot) {
+                        toast('Rollback připraven - RESTARTUJTE systém!', 'success');
+                    }
+                });
+            }
+        }
+    }
+
+    async function showDiff(num) {
+        document.getElementById('modal-title').textContent = `Změny od snapshotu #${num}`;
+        document.getElementById('modal-body').textContent = 'Načítám...';
+        document.getElementById('modal-overlay').classList.add('active');
+
+        const resp = await fetch(`/api/snapshot/diff/${num}`);
+        const data = await resp.json();
+        document.getElementById('modal-body').textContent = data.success ? (data.diff || 'Žádné změny') : data.message;
+    }
+
+    // === Borg Actions ===
+    async function createBorgBackup() {
+        const comment = document.getElementById('borg-comment').value || 'Manual backup';
+        toast('Spouštím Borg backup... (může trvat minuty)', 'info');
+        const result = await apiCall('/api/borg/create', 'POST', { comment });
+        if (result.success) setTimeout(() => location.reload(), 2000);
+    }
+
+    function confirmDeleteBorg(name) {
+        if (confirm(`Smazat Borg archiv "${name}"?`)) {
+            apiCall(`/api/borg/delete/${name}`).then(r => { if (r.success) setTimeout(() => location.reload(), 1000); });
+        }
+    }
+
+    async function browseArchive(name) {
+        document.getElementById('modal-title').textContent = `📂 Archiv: ${name}`;
+        document.getElementById('modal-body').textContent = 'Načítám seznam souborů...';
+        document.getElementById('modal-overlay').classList.add('active');
+
+        const resp = await fetch(`/api/borg/files/${name}`);
+        const data = await resp.json();
+        if (data.success) {
+            const text = data.files.map(f => `${f.mode}  ${f.size.padStart(10)}  ${f.path}`).join('\n');
+            document.getElementById('modal-body').textContent = text || 'Prázdný archiv';
+        } else {
+            document.getElementById('modal-body').textContent = data.message;
+        }
+    }
+
+    // === Restore ===
+    let currentRestoreArchive = '';
+    let currentBrowsePath = '';
+
+    function restoreArchive(name) {
+        currentRestoreArchive = name;
+        currentBrowsePath = '';
+        document.getElementById('restore-title').textContent = '♻️ Obnovení z: ' + name;
+        document.getElementById('restore-current-path').textContent = '/';
+        document.getElementById('restore-overlay').classList.add('active');
+        browseArchiveTree(name, '');
+    }
+
+    async function browseArchiveTree(archive, prefix) {
+        const fileList = document.getElementById('restore-file-list');
+        fileList.innerHTML = '<div style="padding: 12px;"><div class="spinner"></div> Načítám...</div>';
+        
+        try {
+            const resp = await fetch(`/api/borg/tree/${archive}?prefix=${encodeURIComponent(prefix)}`);
+            const data = await resp.json();
+            
+            if (!data.success) {
+                fileList.innerHTML = `<div style="padding: 12px; color: var(--red)">${data.message}</div>`;
+                return;
+            }
+            
+            currentBrowsePath = prefix;
+            document.getElementById('restore-current-path').textContent = '/' + (prefix || '');
+            
+            let html = '<table style="margin: 0;"><tbody>';
+            for (const item of data.items) {
+                const isDir = item.type === 'd' || item.name.endsWith('/');
+                const icon = isDir ? '📁' : '📄';
+                const clickAction = isDir ? `onclick="browseArchiveTree('${archive}', '${item.path}')"` : '';
+                const style = isDir ? 'cursor: pointer; color: var(--blue);' : '';
+                const sizeStr = item.size === '-' ? '' : item.size;
+                
+                html += `<tr>
+                    <td style="width: 30px; ${style}" ${clickAction}>${icon}</td>
+                    <td style="${style}" ${clickAction}>${item.name}</td>
+                    <td style="width: 80px; text-align: right; color: var(--text2); font-size: 12px;">${sizeStr}</td>
+                    <td style="width: 30px;">
+                        <button class="btn btn-sm" onclick="selectForRestore('${item.path}')" title="Vybrat pro obnovení">☑️</button>
+                    </td>
+                </tr>`;
+            }
+            html += '</tbody></table>';
+            
+            if (data.items.length === 0) {
+                html = '<div style="padding: 12px; color: var(--text2)">Prázdný adresář</div>';
+            }
+            
+            fileList.innerHTML = html;
+        } catch (e) {
+            fileList.innerHTML = `<div style="padding: 12px; color: var(--red)">Chyba: ${e.message}</div>`;
+        }
+    }
+
+    function browseUp() {
+        if (!currentBrowsePath) return;
+        const parts = currentBrowsePath.replace(/\/$/, '').split('/');
+        parts.pop();
+        const newPath = parts.length > 0 ? parts.join('/') + '/' : '';
+        browseArchiveTree(currentRestoreArchive, newPath);
+    }
+
+    let selectedRestorePath = '';
+    function selectForRestore(path) {
+        selectedRestorePath = path;
+        document.getElementById('restore-current-path').textContent = '/' + path + ' ✅';
+        toast('Vybráno: ' + path, 'info');
+    }
+
+    function toggleRestoreTarget() {
+        const mode = document.querySelector('input[name="restore-mode"]:checked').value;
+        document.getElementById('restore-target-row').style.display = mode === 'target' ? 'flex' : 'none';
+    }
+
+    async function executeRestore(scope) {
+        const mode = document.querySelector('input[name="restore-mode"]:checked').value;
+        const target = document.getElementById('restore-target').value || '/tmp/borg-restore';
+        const path = scope === 'selected' ? selectedRestorePath : '';
+        
+        if (scope === 'selected' && !path) {
+            toast('Nejdřív vyberte soubor/složku kliknutím na ☑️', 'error');
+            return;
+        }
+        
+        const desc = scope === 'all' ? 'VŠECHNY soubory' : path;
+        const dest = mode === 'original' ? 'PŮVODNÍ MÍSTO' : target;
+        
+        if (!confirm(`Obnovit ${desc}\nz archivu: ${currentRestoreArchive}\ndo: ${dest}\n\nPokračovat?`)) return;
+        
+        if (mode === 'original' && !confirm('⚠️ Obnovení na původní místo PŘEPÍŠE existující soubory!\n\nOpravdu pokračovat?')) return;
+        
+        toast('Spouštím obnovení...', 'info');
+        
+        const result = await apiCall('/api/borg/restore', 'POST', {
+            archive_name: currentRestoreArchive,
+            path: path,
+            target: target,
+            restore_mode: mode,
+        });
+        
+        if (result.success) {
+            document.getElementById('restore-overlay').classList.remove('active');
+        }
+    }
+
+    // === Log Management ===
+    function exportLog() {
+        window.open('/api/logs/export', '_blank');
+    }
+
+    async function clearLog() {
+        const password = prompt('Heslo pro smazání logu:');
+        if (!password) return;
+        const result = await apiCall('/api/logs/clear', 'POST', { password });
+        if (result.success) setTimeout(() => location.reload(), 1000);
+    }
+
+    // === Sync ===
+    async function runSync() {
+        toast('Spouštím sync na backup disk...', 'info');
+        const result = await apiCall('/api/sync/run');
+        if (result.success) setTimeout(() => location.reload(), 3000);
+    }
+
+    // === Modal ===
+    function closeModal(e) {
+        if (e.target === document.getElementById('modal-overlay')) {
+            e.target.classList.remove('active');
+        }
+    }
+
+
+    // === Full Backup Flow ===
+    async function runFullFlow() {
+        const desc = document.getElementById('full-desc').value || 'Full backup';
+        if (!confirm(`Spustit kompletní backup flow?\n\nPopis: ${desc}\n\n1. Snapper snapshot\n2. Borg backup\n3. Sync na backup disk\n\nMůže trvat několik minut.`)) return;
+        
+        const btn = document.getElementById('btn-full-flow');
+        const progress = document.getElementById('full-flow-progress');
+        const results = document.getElementById('full-flow-results');
+        
+        btn.disabled = true;
+        btn.textContent = '⏳ Probíhá...';
+        progress.style.display = 'block';
+        results.innerHTML = '';
+        
+        document.getElementById('full-flow-status').textContent = 'Krok 1/3: Snapshot... → Krok 2/3: Borg backup... → Krok 3/3: Sync...';
+        
+        try {
+            const resp = await fetch('/api/full-backup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ description: desc }),
+            });
+            const data = await resp.json();
+            
+            progress.style.display = 'none';
+            btn.disabled = false;
+            btn.textContent = '🚀 Spustit vše';
+            
+            if (data.results) {
+                results.innerHTML = data.results.map(r => 
+                    `<div style="padding: 4px 0; ${r.includes('❌') ? 'color: var(--red)' : 'color: var(--green)'}">${r}</div>`
+                ).join('');
+            }
+            
+            toast(data.success ? 'Full backup flow dokončen!' : 'Flow dokončen s chybami', data.success ? 'success' : 'error');
+            if (data.success) setTimeout(() => location.reload(), 3000);
+        } catch (e) {
+            progress.style.display = 'none';
+            btn.disabled = false;
+            btn.textContent = '🚀 Spustit vše';
+            toast('Chyba: ' + e.message, 'error');
+        }
+    }
+
+    // === Nuclear Delete ===
+    async function runNuclearDelete() {
+        const password = document.getElementById('nuclear-pass').value;
+        const confirmText = document.getElementById('nuclear-confirm').value;
+        
+        if (!password || !confirmText) {
+            toast('Vyplňte heslo a potvrzovací text!', 'error');
+            return;
+        }
+        
+        if (confirmText !== 'SMAZAT VSE') {
+            toast('Musíte napsat přesně: SMAZAT VSE', 'error');
+            return;
+        }
+        
+        if (!confirm('⚠️ POSLEDNÍ VAROVÁNÍ!\n\nOpravdu chcete SMAZAT VŠECHNY zálohy?\n\n- Všechny Snapper snapshoty\n- Všechny Borg archivy\n- Všechny sync snapshoty\n\nTato akce je NEVRATNÁ!')) return;
+        
+        if (!confirm('OPRAVDU? Tohle nelze vrátit zpět!')) return;
+        
+        const btn = document.getElementById('btn-nuclear');
+        const results = document.getElementById('nuclear-results');
+        
+        btn.disabled = true;
+        btn.textContent = '⏳ Mažu...';
+        results.innerHTML = '<div class="spinner"></div> Probíhá mazání...';
+        
+        try {
+            const resp = await fetch('/api/nuclear-delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ password, confirm_text: confirmText }),
+            });
+            const data = await resp.json();
+            
+            btn.disabled = false;
+            btn.textContent = '☢️ SMAZAT VŠECHNY ZÁLOHY';
+            
+            if (data.results) {
+                results.innerHTML = data.results.map(r => `<div style="padding: 4px 0; color: var(--red)">${r}</div>`).join('');
+            } else {
+                results.innerHTML = `<div style="color: ${data.success ? 'var(--green)' : 'var(--red)'}">${data.message}</div>`;
+            }
+            
+            toast(data.success ? 'Všechny zálohy smazány' : data.message, data.success ? 'success' : 'error');
+            if (data.success) setTimeout(() => location.reload(), 3000);
+        } catch (e) {
+            btn.disabled = false;
+            btn.textContent = '☢️ SMAZAT VŠECHNY ZÁLOHY';
+            toast('Chyba: ' + e.message, 'error');
+        }
+    }
+
+    // === Auto-refresh každých 5 minut ===
+    setInterval(() => location.reload(), 300000);
+
+    // === Nový Golden Snapshot ===
+    async function newGoldenSnapshot() {
+        if (!confirm('⭐ Vytvořit nový GOLDEN snapshot?\n\n• Vytvoří nový snapshot označený jako GOLDEN\n• Starý GOLDEN snapshot bude přejmenován na GOLDEN-old\n\nPokračovat?')) return;
+        toast('Vytvářím GOLDEN snapshot...', 'info');
+        const result = await apiCall('/api/snapshot/new-golden', 'POST');
+        if (result.success) {
+            toast('⭐ ' + result.message, 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            toast('❌ ' + result.message, 'error');
+        }
+    }
+
+</script>
+
+
+<!-- Restore Modal -->
+<div class="modal-overlay" id="restore-overlay" onclick="if(event.target===this)this.classList.remove('active')">
+    <div class="modal" style="max-width: 750px;">
+        <h3 id="restore-title">♻️ Obnovení z archivu</h3>
+        
+        <!-- Browse -->
+        <div id="restore-browse" style="margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <span style="color: var(--text2); font-size: 13px;">📂 Cesta:</span>
+                <code id="restore-current-path" style="background: var(--bg); padding: 4px 8px; border-radius: 4px; font-size: 13px; flex: 1;">/</code>
+                <button class="btn btn-sm" onclick="browseUp()" id="btn-browse-up">⬆️ Nahoru</button>
+            </div>
+            <div id="restore-file-list" style="max-height: 300px; overflow-y: auto; background: var(--bg); border-radius: 6px; border: 1px solid var(--border);">
+                <div style="padding: 12px; color: var(--text2)">Klikni na ♻️ Restore u archivu pro procházení</div>
+            </div>
+        </div>
+        
+        <!-- Restore options -->
+        <div style="background: var(--bg); border-radius: 6px; padding: 12px; margin-bottom: 16px;">
+            <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Možnosti obnovení:</div>
+            <div style="display: flex; gap: 16px; margin-bottom: 8px;">
+                <label style="font-size: 13px; cursor: pointer;">
+                    <input type="radio" name="restore-mode" value="target" checked onchange="toggleRestoreTarget()"> Do cílové složky
+                </label>
+                <label style="font-size: 13px; cursor: pointer;">
+                    <input type="radio" name="restore-mode" value="original" onchange="toggleRestoreTarget()"> Na původní místo ⚠️
+                </label>
+            </div>
+            <div id="restore-target-row" class="input-group">
+                <input type="text" id="restore-target" value="/tmp/borg-restore" placeholder="Cílová složka...">
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+            <button class="btn" onclick="document.getElementById('restore-overlay').classList.remove('active')">Zavřít</button>
+            <button class="btn btn-primary" onclick="executeRestore('selected')">♻️ Obnovit vybranou cestu</button>
+            <button class="btn btn-success" onclick="executeRestore('all')">♻️ Obnovit VŠE</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- Restore Modal -->
+<div class="modal-overlay" id="restore-overlay" onclick="if(event.target===this)this.classList.remove('active')">
+    <div class="modal" style="max-width: 750px;">
+        <h3 id="restore-title">♻️ Obnovení z archivu</h3>
+        
+        <!-- Browse -->
+        <div id="restore-browse" style="margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <span style="color: var(--text2); font-size: 13px;">📂 Cesta:</span>
+                <code id="restore-current-path" style="background: var(--bg); padding: 4px 8px; border-radius: 4px; font-size: 13px; flex: 1;">/</code>
+                <button class="btn btn-sm" onclick="browseUp()" id="btn-browse-up">⬆️ Nahoru</button>
+            </div>
+            <div id="restore-file-list" style="max-height: 300px; overflow-y: auto; background: var(--bg); border-radius: 6px; border: 1px solid var(--border);">
+                <div style="padding: 12px; color: var(--text2)">Klikni na ♻️ Restore u archivu pro procházení</div>
+            </div>
+        </div>
+        
+        <!-- Restore options -->
+        <div style="background: var(--bg); border-radius: 6px; padding: 12px; margin-bottom: 16px;">
+            <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Možnosti obnovení:</div>
+            <div style="display: flex; gap: 16px; margin-bottom: 8px;">
+                <label style="font-size: 13px; cursor: pointer;">
+                    <input type="radio" name="restore-mode" value="target" checked onchange="toggleRestoreTarget()"> Do cílové složky
+                </label>
+                <label style="font-size: 13px; cursor: pointer;">
+                    <input type="radio" name="restore-mode" value="original" onchange="toggleRestoreTarget()"> Na původní místo ⚠️
+                </label>
+            </div>
+            <div id="restore-target-row" class="input-group">
+                <input type="text" id="restore-target" value="/tmp/borg-restore" placeholder="Cílová složka...">
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+            <button class="btn" onclick="document.getElementById('restore-overlay').classList.remove('active')">Zavřít</button>
+            <button class="btn btn-primary" onclick="executeRestore('selected')">♻️ Obnovit vybranou cestu</button>
+            <button class="btn btn-success" onclick="executeRestore('all')">♻️ Obnovit VŠE</button>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

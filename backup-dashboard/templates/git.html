@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git Správa Verzí — Backup Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+            min-height: 100vh;
+        }
+        .header {
+            background: #161b22;
+            border-bottom: 1px solid #30363d;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .header h1 {
+            font-size: 1.3em;
+            color: #f0f6fc;
+        }
+        .btn {
+            padding: 6px 14px;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+            background: #21262d;
+            color: #c9d1d9;
+            font-size: 13px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        .btn:hover { background: #30363d; border-color: #8b949e; }
+        .btn-primary {
+            background: #238636;
+            border-color: #2ea043;
+            color: #fff;
+        }
+        .btn-primary:hover { background: #2ea043; }
+        .btn-danger {
+            background: #da3633;
+            border-color: #f85149;
+            color: #fff;
+        }
+        .btn-danger:hover { background: #b62324; }
+        .btn-sm { padding: 4px 10px; font-size: 12px; }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-clean { background: #0d419d; color: #79c0ff; }
+        .badge-dirty { background: #5a1e02; color: #ffa657; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+        .card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .card-header {
+            padding: 14px 18px;
+            border-bottom: 1px solid #30363d;
+            font-weight: 600;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card-body { padding: 18px; }
+        textarea {
+            width: 100%;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #c9d1d9;
+            padding: 10px 12px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 60px;
+        }
+        textarea:focus { outline: none; border-color: #58a6ff; }
+        .commit-form {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+        .commit-form textarea { flex: 1; }
+        .changes-preview {
+            margin-top: 12px;
+            padding: 10px 14px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 13px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .changes-preview .change-line { padding: 2px 0; }
+        .change-m { color: #ffa657; }
+        .change-a { color: #3fb950; }
+        .change-d { color: #f85149; }
+        .change-r { color: #79c0ff; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 1px solid #21262d;
+            font-size: 13px;
+        }
+        th {
+            color: #8b949e;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        tr:hover { background: #1c2128; }
+        .hash-link {
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            color: #58a6ff;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .hash-link:hover { text-decoration: underline; }
+        .commit-msg { color: #f0f6fc; }
+        .commit-date { color: #8b949e; font-size: 12px; }
+        .commit-author { color: #8b949e; font-size: 12px; }
+        .actions { display: flex; gap: 6px; }
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 900px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #30363d;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h3 { font-size: 16px; color: #f0f6fc; }
+        .modal-body {
+            padding: 16px 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .diff-view {
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .diff-add { color: #3fb950; background: rgba(63,185,80,0.1); }
+        .diff-del { color: #f85149; background: rgba(248,81,73,0.1); }
+        .diff-hunk { color: #79c0ff; }
+        .diff-file { color: #ffa657; font-weight: bold; }
+        /* Toast */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .toast {
+            padding: 12px 18px;
+            border-radius: 8px;
+            font-size: 14px;
+            animation: slideIn 0.3s ease;
+            max-width: 400px;
+        }
+        .toast-success { background: #1a7f37; color: #fff; }
+        .toast-error { background: #b62324; color: #fff; }
+        .toast-info { background: #0d419d; color: #fff; }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .commit-note {
+            color: #8b949e;
+            font-size: 12px;
+            margin-top: 4px;
+            font-style: italic;
+        }
+        .btn-icon {
+            background: none;
+            border: none;
+            color: #8b949e;
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .btn-icon:hover { background: #30363d; color: #c9d1d9; }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #8b949e;
+        }
+        .loading {
+            text-align: center;
+            padding: 30px;
+            color: #8b949e;
+        }
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #30363d;
+            border-top-color: #58a6ff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="header-left">
+        <a href="/" class="btn">← Dashboard</a>
+        <h1>🔀 Git Správa Verzí</h1>
+        <span id="status-badge" class="badge badge-clean">...</span>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Nový commit -->
+    <div class="card">
+        <div class="card-header">📝 Nový commit</div>
+        <div class="card-body">
+            <div class="commit-form">
+                <textarea id="commit-message" placeholder="Popis změn..." rows="2"></textarea>
+                <button class="btn btn-primary" onclick="createCommit()" id="btn-commit">Uložit změny</button>
+            </div>
+            <div id="changes-preview" class="changes-preview" style="display:none;"></div>
+        </div>
+    </div>
+
+    <!-- Historie verzí -->
+    <div class="card">
+        <div class="card-header">📜 Historie verzí</div>
+        <div class="card-body" style="padding: 0;">
+            <div id="commits-loading" class="loading"><span class="spinner"></span>Načítám historii...</div>
+            <div id="commits-table-wrap" style="display:none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Hash</th>
+                            <th>Datum</th>
+                            <th>Zpráva</th>
+                            <th>Autor</th>
+                            <th>Akce</th>
+                        </tr>
+                    </thead>
+                    <tbody id="commits-body"></tbody>
+                </table>
+            </div>
+            <div id="commits-empty" class="empty-state" style="display:none;">Žádné commity</div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toasts"></div>
+
+<!-- Diff modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)this.classList.remove('active')">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="modal-title">Diff</h3>
+            <button class="btn btn-sm" onclick="document.getElementById('modal-overlay').classList.remove('active')">✕ Zavřít</button>
+        </div>
+        <div class="modal-body">
+            <div class="diff-view" id="modal-diff"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Note modal -->
+<div class="modal-overlay" id="note-modal-overlay" onclick="if(event.target===this)this.classList.remove('active')">
+    <div class="modal" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3 id="note-modal-title">Poznámka</h3>
+            <button class="btn btn-sm" onclick="document.getElementById('note-modal-overlay').classList.remove('active')">✕ Zavřít</button>
+        </div>
+        <div class="modal-body">
+            <textarea id="note-text" placeholder="Přidejte poznámku ke commitu..." rows="3" style="margin-bottom:12px;"></textarea>
+            <div style="display:flex; gap:8px;">
+                <button class="btn btn-primary" onclick="saveNote()" id="btn-save-note">Uložit</button>
+                <button class="btn" onclick="document.getElementById('note-text').value=''; saveNote()">Smazat poznámku</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toast(message, type = 'info') {
+    const container = document.getElementById('toasts');
+    const el = document.createElement('div');
+    el.className = 'toast toast-' + type;
+    el.textContent = message;
+    container.appendChild(el);
+    setTimeout(() => el.remove(), 5000);
+}
+
+async function apiCall(url, options = {}) {
+    try {
+        const resp = await fetch(url, options);
+        const data = await resp.json();
+        return data;
+    } catch (e) {
+        toast('Chyba spojení: ' + e.message, 'error');
+        return { success: false, message: e.message };
+    }
+}
+
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+function formatDiff(diffText) {
+    if (!diffText) return '<span style="color:#8b949e">Žádné změny</span>';
+    return diffText.split('\n').map(line => {
+        const escaped = escapeHtml(line);
+        if (line.startsWith('+++') || line.startsWith('---')) {
+            return '<span class="diff-file">' + escaped + '</span>';
+        } else if (line.startsWith('+')) {
+            return '<span class="diff-add">' + escaped + '</span>';
+        } else if (line.startsWith('-')) {
+            return '<span class="diff-del">' + escaped + '</span>';
+        } else if (line.startsWith('@@')) {
+            return '<span class="diff-hunk">' + escaped + '</span>';
+        }
+        return escaped;
+    }).join('\n');
+}
+
+let commitsData = [];
+let editingNoteHash = null;
+
+function editNote(index) {
+    const c = commitsData[index];
+    editingNoteHash = c.short_hash;
+    document.getElementById('note-modal-title').textContent = 'Poznámka k ' + c.short_hash;
+    document.getElementById('note-text').value = c.note || '';
+    document.getElementById('note-modal-overlay').classList.add('active');
+    document.getElementById('note-text').focus();
+}
+
+async function saveNote() {
+    const note = document.getElementById('note-text').value;
+    const btn = document.getElementById('btn-save-note');
+    btn.disabled = true;
+    btn.textContent = 'Ukládám...';
+
+    const formData = new FormData();
+    formData.append('note', note);
+
+    const data = await apiCall('/api/git/note/' + editingNoteHash, { method: 'POST', body: formData });
+    if (data.success) {
+        toast(data.message, 'success');
+        document.getElementById('note-modal-overlay').classList.remove('active');
+        loadData();
+    } else {
+        toast(data.message, 'error');
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Uložit';
+}
+
+async function loadData() {
+    const data = await apiCall('/api/git/log');
+    if (!data.success) {
+        document.getElementById('commits-loading').style.display = 'none';
+        document.getElementById('commits-empty').style.display = 'block';
+        return;
+    }
+
+    // Status badge
+    const badge = document.getElementById('status-badge');
+    const st = data.status;
+    badge.textContent = st.branch + (st.clean ? ' — čistý' : ` — ${st.changes.length} změn`);
+    badge.className = 'badge ' + (st.clean ? 'badge-clean' : 'badge-dirty');
+
+    // Změny preview
+    const preview = document.getElementById('changes-preview');
+    if (!st.clean) {
+        preview.style.display = 'block';
+        preview.innerHTML = '<div style="color:#8b949e;margin-bottom:6px;">Neuložené změny:</div>' +
+            st.changes.map(c => {
+                const code = c.substring(0, 2).trim();
+                let cls = 'change-m';
+                if (code === 'A' || code === '??' || code === 'AM') cls = 'change-a';
+                else if (code === 'D') cls = 'change-d';
+                else if (code === 'R') cls = 'change-r';
+                return '<div class="change-line ' + cls + '">' + escapeHtml(c) + '</div>';
+            }).join('');
+    } else {
+        preview.style.display = 'none';
+    }
+
+    // Tabulka commitů
+    document.getElementById('commits-loading').style.display = 'none';
+    const commits = data.commits;
+    if (commits.length === 0) {
+        document.getElementById('commits-empty').style.display = 'block';
+        return;
+    }
+    document.getElementById('commits-table-wrap').style.display = 'block';
+    const tbody = document.getElementById('commits-body');
+    commitsData = commits;
+    tbody.innerHTML = commits.map((c, i) => `
+        <tr>
+            <td><span class="hash-link" onclick="showDiff('${c.short_hash}')">${escapeHtml(c.short_hash)}</span></td>
+            <td><span class="commit-date">${escapeHtml(c.date)}</span></td>
+            <td>
+                <span class="commit-msg">${escapeHtml(c.message)}</span>
+                ${c.note ? '<div class="commit-note">📝 ' + escapeHtml(c.note) + '</div>' : ''}
+            </td>
+            <td><span class="commit-author">${escapeHtml(c.author)}</span></td>
+            <td class="actions">
+                <button class="btn-icon" onclick="editNote(${i})" title="Poznámka">✏️</button>
+                <button class="btn btn-sm" onclick="showDiff('${c.short_hash}')">Diff</button>
+                <button class="btn btn-sm btn-danger" onclick="confirmRollback('${c.short_hash}', '${escapeHtml(c.message).replace(/'/g, "\\'")}')">Rollback</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function showDiff(hash) {
+    document.getElementById('modal-title').textContent = 'Diff commitu ' + hash;
+    document.getElementById('modal-diff').innerHTML = '<span class="spinner"></span> Načítám...';
+    document.getElementById('modal-overlay').classList.add('active');
+
+    const data = await apiCall('/api/git/diff/' + hash);
+    if (data.success) {
+        document.getElementById('modal-diff').innerHTML = formatDiff(data.diff);
+    } else {
+        document.getElementById('modal-diff').innerHTML = '<span style="color:#f85149">' + escapeHtml(data.message) + '</span>';
+    }
+}
+
+async function createCommit() {
+    const msgEl = document.getElementById('commit-message');
+    const msg = msgEl.value.trim();
+    if (!msg) {
+        toast('Zadejte popis změn', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('btn-commit');
+    btn.disabled = true;
+    btn.textContent = 'Ukládám...';
+
+    const formData = new FormData();
+    formData.append('message', msg);
+
+    const data = await apiCall('/api/git/commit', { method: 'POST', body: formData });
+    if (data.success) {
+        toast(data.message, 'success');
+        msgEl.value = '';
+        loadData();
+    } else {
+        toast(data.message, 'error');
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Uložit změny';
+}
+
+function confirmRollback(hash, message) {
+    if (!confirm(`Opravdu chcete provést rollback na verzi ${hash}?\n\n"${message}"\n\nToto obnoví všechny soubory na stav z dané verze a restartuje službu.`)) {
+        return;
+    }
+    if (!confirm(`POTVRZENÍ: Rollback na ${hash} — služba se restartuje. Pokračovat?`)) {
+        return;
+    }
+    doRollback(hash);
+}
+
+async function doRollback(hash) {
+    toast('Provádím rollback...', 'info');
+    const data = await apiCall('/api/git/rollback/' + hash, { method: 'POST' });
+    if (data.success) {
+        toast(data.message, 'success');
+        setTimeout(() => location.reload(), 3000);
+    } else {
+        toast(data.message, 'error');
+    }
+}
+
+// Načíst data při startu
+loadData();
+</script>
+
+</body>
+</html>
