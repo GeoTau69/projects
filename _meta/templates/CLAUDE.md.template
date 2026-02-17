@@ -1,0 +1,26 @@
+# {display_name}
+
+{description}
+
+## Tech stack
+
+- **Jazyk**: {language}
+- **Typ**: {type}
+
+## Struktura projektu
+
+```
+(doplnit po implementaci)
+```
+
+## Důležité příkazy
+
+```bash
+(doplnit)
+```
+
+## Konvence a pravidla
+
+- Kód a komentáře psát **česky**
+- Soubory MUSÍ být v kódování **UTF-8**
+- Každý projekt musí být self-contained (žádné cross-imports z jiných projektů)

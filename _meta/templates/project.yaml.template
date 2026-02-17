@@ -1,0 +1,10 @@
+# Metadata projektu — vyplnit při vytvoření
+name: "project-name"
+display_name: "Název projektu"
+type: "scripts"                    # web-app | cli-tool | library | scripts | full-stack
+language: "python"                 # python | bash | javascript | go | mixed
+status: "planned"                  # active | wip | planned | archived
+port: null                         # Číslo portu pokud je web služba
+systemd_service: null              # Název systemd služby pokud existuje
+description: "Krátký popis projektu"
+tags: []
