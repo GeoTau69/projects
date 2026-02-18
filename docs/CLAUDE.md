@@ -67,12 +67,12 @@ journalctl --user -u docs -f
 - Kód česky, UTF-8
 
 <!-- SYNC:START -->
-<!-- aktualizováno: 2026-02-18 20:06 -->
+<!-- aktualizováno: 2026-02-18 20:18 -->
 
 **Živý stav** *(info-sync.py)*
 
 - Služba `docs` (user service): 🟢 active
 - Port 8080: 🟢 naslouchá
-- Poslední commit: `f4620c3` — Aktualizace root CLAUDE.md — kompletní stav workspace
+- Poslední commit: `45ac6e7` — Přidány projekty docs, git; síťové adresy (LAN, Tailscale) do dokumentace
 
 <!-- SYNC:END -->

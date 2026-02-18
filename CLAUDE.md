@@ -44,7 +44,7 @@ make list                # Rychlý výpis projektů
 > `make docs` aktualizuje tabulku níže z `project.yaml` souborů (statické sekce výše jsou zachovány).
 
 <!-- PROJEKTY:START -->
-<!-- generováno: 2026-02-18 20:06 -->
+<!-- generováno: 2026-02-18 20:18 -->
 
 | Projekt | Status | Tech | Port | Živý stav | Popis | Detail |
 |---------|--------|------|------|-----------|-------|--------|

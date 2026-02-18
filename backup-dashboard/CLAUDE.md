@@ -102,12 +102,12 @@ cat /opt/backup-dashboard/logs/dashboard.log
 - Sudoers pravidlo pro backup-dashboard: `/etc/sudoers.d/backup-dashboard` — umožňuje `geo` spouštět `systemctl start|stop|restart|status backup-dashboard` bez hesla. **Nepoužívat `--no-pager` ani jiné flagy** — sudoers kontroluje přesnou shodu příkazu a extra argumenty způsobí odmítnutí
 
 <!-- SYNC:START -->
-<!-- aktualizováno: 2026-02-18 20:06 -->
+<!-- aktualizováno: 2026-02-18 20:18 -->
 
 **Živý stav** *(info-sync.py)*
 
 - Služba `backup-dashboard` (system service): 🟢 active
 - Port 8090: 🟢 naslouchá
-- Poslední commit: `593f6ee` — Migrace backup-dashboard z /opt do ~/projects/
+- Poslední commit: `45ac6e7` — Přidány projekty docs, git; síťové adresy (LAN, Tailscale) do dokumentace
 
 <!-- SYNC:END -->
