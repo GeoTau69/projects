@@ -1,0 +1,10 @@
+name: "dashboard"
+display_name: "Projects Dashboard"
+type: "web-app"
+language: "python"
+status: "active"
+port: 8099
+systemd_service: "projects-dashboard"
+systemd_user: true
+description: "Živý přehled stavu všech projektů, služeb a systémových módů"
+tags: [dashboard, monitoring, systemd]

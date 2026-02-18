@@ -2,6 +2,14 @@
 
 Webový dashboard pro správu 3-vrstvého backup systému na Fedoře (Btrfs). Běží jako systemd služba na portu 8090.
 
+## Přístupy
+
+| Síť | URL |
+|-----|-----|
+| Lokální | http://localhost:8090 |
+| LAN | http://192.168.0.101:8090 |
+| Tailscale | http://fedora:8090 · http://100.117.55.88:8090 |
+
 ## Backup vrstvy
 
 1. **Snapper** – Btrfs snapshoty root disku (`snapper -c root`)
@@ -92,3 +100,14 @@ cat /opt/backup-dashboard/logs/dashboard.log
 - Neduplikovat endpointy ani JS funkce — v minulosti se opakovaně stalo, že se kód nalepil vícekrát
 - Když potřebuji, aby uživatel spustil příkaz v terminálu: vždy zapsat obsah do souboru (Write tool) a poslat **jednořádkový** příkaz na spuštění (např. `sudo bash /tmp/script.sh`). Nikdy neposílat víceřádkové příkazy — terminál uživatele je neumí správně zpracovat
 - Sudoers pravidlo pro backup-dashboard: `/etc/sudoers.d/backup-dashboard` — umožňuje `geo` spouštět `systemctl start|stop|restart|status backup-dashboard` bez hesla. **Nepoužívat `--no-pager` ani jiné flagy** — sudoers kontroluje přesnou shodu příkazu a extra argumenty způsobí odmítnutí
+
+<!-- SYNC:START -->
+<!-- aktualizováno: 2026-02-18 20:06 -->
+
+**Živý stav** *(info-sync.py)*
+
+- Služba `backup-dashboard` (system service): 🟢 active
+- Port 8090: 🟢 naslouchá
+- Poslední commit: `593f6ee` — Migrace backup-dashboard z /opt do ~/projects/
+
+<!-- SYNC:END -->

@@ -1,0 +1,7 @@
+name: "git"
+display_name: "Git Integrace"
+type: "docs"
+language: "markdown"
+status: "active"
+description: "Centrální dokumentace git setupu, workflow a integrace napříč projekty"
+tags: [git, docs, devops, internal]

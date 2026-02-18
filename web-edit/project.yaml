@@ -1,0 +1,13 @@
+name: "web-edit"
+display_name: "Micro DMS / MD Collaborative Editor"
+type: "web-app"
+language: "python"
+status: "active"
+port: 8765
+systemd_service: "mdserver"
+systemd_user: true
+description: "Online Markdown editor pro IC dokumentaci s real-time multi-user editací přes WebSocket"
+tags: [markdown, editor, websocket, aiohttp, tailscale]
+data_dir: "/home/geo/Shared/IC"
+url_public: "https://fedora.tail41712d.ts.net/"
+migrated_from: "/home/geo/Shared/IC/code/"

@@ -1,0 +1,10 @@
+name: "docs"
+display_name: "Projects Documentation"
+type: "web-app"
+language: "python"
+status: "active"
+port: 8080
+systemd_service: "docs"
+systemd_user: true
+description: "Centrální dokumentační web — navigator přes projekty a CLAUDE.md soubory"
+tags: [docs, internal, markdown]
