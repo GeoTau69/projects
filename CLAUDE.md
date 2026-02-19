@@ -44,14 +44,15 @@ make list                # Rychlý výpis projektů
 > `make docs` aktualizuje tabulku níže z `project.yaml` souborů (statické sekce výše jsou zachovány).
 
 <!-- PROJEKTY:START -->
-<!-- generováno: 2026-02-18 20:18 -->
+<!-- generováno: 2026-02-19 21:40 -->
 
-| Projekt | Status | Tech | Port | Živý stav | Popis | Detail |
-|---------|--------|------|------|-----------|-------|--------|
-| 🟢 `backup-dashboard/` | active | python | 8090 | 🟢 | Webové rozhraní pro správu 3-vrstvového ba... | `backup-dashboard/CLAUDE.md` |
-| 🟢 `dashboard/` | active | python | 8099 | 🟢 | Živý přehled stavu všech projektů, služeb ... | `dashboard/CLAUDE.md` |
-| 🟢 `docs/` | active | python | 8080 | 🟢 | Centrální dokumentační web — navigator pře... | `docs/CLAUDE.md` |
-| 🟢 `git/` | active | markdown/docs | – | ❓ | Centrální dokumentace git setupu, workflow... | `git/CLAUDE.md` |
-| 🟢 `web-edit/` | active | python | 8765 | 🟢 | Online Markdown editor pro IC dokumentaci ... | `web-edit/CLAUDE.md` |
+| Projekt | Status | Tech | Port | Popis | Detail |
+|---------|--------|------|------|-------|--------|
+| 🟢 `ai/` | active | ? | None | Sada nástrojů pro optimalizaci práce s AI v rámci wo... | `ai/CLAUDE.md` |
+| 🟢 `backup-dashboard/` | active | python | 8090 | Webové rozhraní pro správu 3-vrstvového backup systé... | `backup-dashboard/CLAUDE.md` |
+| 🟢 `dashboard/` | active | python | 8099 | Živý přehled stavu všech projektů, služeb a systémov... | `dashboard/CLAUDE.md` |
+| 🟢 `docs/` | active | python | 8080 | Centrální dokumentační web — navigator přes projekty... | `docs/CLAUDE.md` |
+| 🟢 `git/` | active | markdown/docs | – | Centrální dokumentace git setupu, workflow a integra... | `git/CLAUDE.md` |
+| 🟢 `web-edit/` | active | python | 8765 | Online Markdown editor pro IC dokumentaci s real-tim... | `web-edit/CLAUDE.md` |
 
 <!-- PROJEKTY:END -->

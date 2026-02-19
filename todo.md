@@ -226,26 +226,32 @@ agent search "co projekt dělá" --scope docs
 
 ### [5] MODEL ROUTING
 **Priorita: NÍZKÁ**
-**Status: TODO** — závisí na [2]
+**Status: HOTOVO**
 
-Automatické přepínání Ollama (lokální/zdarma) ↔ Claude API podle typu úlohy.
+**Poznámka:** LiteLLM přeskočen (pravděpodobný pydantic problém jako chromadb) → přímé HTTP Ollama API.
+
+Automatické přepínání: `call_api(..., model='auto')` → `ROUTING_RULES[operation]` → Ollama nebo Anthropic.
 
 ```python
 ROUTING_RULES = {
-    "doc_update":    "local",    # Ollama
-    "boilerplate":   "local",    # Ollama
-    "code_review":   "sonnet",   # Claude Sonnet
-    "architecture":  "opus",     # Claude Opus
-    "debug_complex": "sonnet",   # Claude Sonnet
+    'doc_update':    'local',    # Ollama qwen2.5-coder:14b
+    'boilerplate':   'local',    # Ollama
+    'info_sync':     'local',    # Ollama
+    'code_review':   'sonnet',   # Claude Sonnet
+    'architecture':  'opus',     # Claude Opus
+    'debug_complex': 'sonnet',   # Claude Sonnet
+    '_default':      'sonnet',
 }
 ```
 
-Technologie: LiteLLM jako transparentní proxy.
-
 **Kroky:**
-- [ ] Nainstalovat a nakonfigurovat LiteLLM
-- [ ] Napsat routing logiku do `token_tracker.py`
-- [ ] Ověřit úspory přes účetnictví [2]
+- [x] `resolve_model(operation, model)` — resolves 'auto'/'local'/alias na cílový model
+- [x] `call_api_ollama()` — Ollama `/api/chat` HTTP, vrací tokeny + text
+- [x] `call_api()` rozšířen o routing větev (ollama/ prefix → lokální, jinak Anthropic)
+- [x] `agent route --show / --test <operation>` CLI
+- [x] `billing` zobrazuje Ollama volání s $0.00 odděleně
+- [x] Oprava billing JOIN bug → subquery přístup
+- [ ] Reálné ověření úspor na skutečných API skriptech (až budou)
 
 ---
 

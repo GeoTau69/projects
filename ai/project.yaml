@@ -1,0 +1,7 @@
+name: ai
+display_name: AI Dev Agent Stack
+description: Sada nástrojů pro optimalizaci práce s AI v rámci workspace — účetnictví tokenů, prompt cache, sémantické vyhledávání kódu, model routing.
+status: active
+tech: [python, sqlite, numpy, ollama]
+port: null
+systemd: null

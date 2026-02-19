@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Token Tracker — SQLite účetnictví + prompt cache Anthropic API volání.
+Token Tracker — SQLite účetnictví + prompt cache + model routing.
 
 Databáze:  ~/.ai-agent/tokens.db
 CLI:       ~/bin/agent
@@ -8,17 +8,18 @@ CLI:       ~/bin/agent
 Použití (CLI):
   agent log --project X --operation doc_update --model sonnet --in 5000 --out 1200
   agent billing [--today|--week|--month] [--project X] [--model X] [--top]
-  agent cache --stats
-  agent cache --list
-  agent cache --clear [--all]
+  agent cache --stats | --list | --clear [--all]
+  agent route --show
+  agent route --test doc_update
   agent init
 
 Použití (Python import):
   from _meta.token_tracker import call_api
-  text = call_api('my-project', 'doc_update', 'sonnet', [
+  # model='auto' → routing tabulka rozhodne (local nebo cloud)
+  text = call_api('my-project', 'doc_update', 'auto', [
       {'role': 'user', 'content': 'Vygeneruj dokumentaci pro ...'}
   ])
-  # Automaticky: cache lookup → API call → log + uložení do cache
+  # Automaticky: routing → cache lookup → API call → log
 """
 
 import sqlite3
@@ -49,6 +50,22 @@ MODEL_ALIASES = {
     'sonnet': 'claude-sonnet-4-6',
     'haiku':  'claude-haiku-4-5',
 }
+
+# Model routing — automatické přepínání Ollama ↔ Claude API dle typu operace.
+# Hodnoty: 'local' = Ollama, 'sonnet'/'opus'/'haiku' = Claude API alias.
+ROUTING_RULES: dict[str, str] = {
+    'doc_update':    'local',    # Ollama — generování dokumentace
+    'boilerplate':   'local',    # Ollama — šablony a kostry kódu
+    'info_sync':     'local',    # Ollama — synchronizace SYNC bloků
+    'code_review':   'sonnet',   # Claude Sonnet — analýza kódu
+    'architecture':  'opus',     # Claude Opus — architektonická rozhodnutí
+    'debug_complex': 'sonnet',   # Claude Sonnet — složité debugování
+    '_default':      'sonnet',   # výchozí pro neznámé operace
+}
+
+# Lokální Ollama model pro operace routované na 'local'
+LOCAL_MODEL = 'qwen2.5-coder:14b'
+OLLAMA_CHAT_URL = 'http://localhost:11434/api/chat'
 
 # Cache TTL v hodinách per typ operace. 0 = cache zakázána.
 CACHE_TTL: dict[str, int] = {
@@ -198,32 +215,94 @@ def log_cache_hit(conn: sqlite3.Connection, project: str, operation: str,
     conn.commit()
 
 
+# ─── Model routing ───────────────────────────────────────────────────────────
+
+def resolve_model(operation: str, model: str) -> str:
+    """
+    Rozhodne jaký model použít.
+      'auto'  → ROUTING_RULES[operation] nebo '_default'
+      'local' → LOCAL_MODEL s prefixem 'ollama/'
+      alias   → plný název Claude modelu (normalize_model)
+    Vrátí buď 'ollama/<název>' nebo plný Claude model string.
+    """
+    if model == 'auto':
+        dest = ROUTING_RULES.get(operation, ROUTING_RULES['_default'])
+    else:
+        dest = model
+
+    if dest == 'local':
+        return f'ollama/{LOCAL_MODEL}'
+    return normalize_model(dest)
+
+
+def call_api_ollama(project: str, operation: str, ollama_model: str,
+                    messages: list[dict], system: str | None,
+                    max_tokens: int, phash: str, notes: str) -> str:
+    """
+    Volá lokální Ollama model přes HTTP API.
+    ollama_model je ve formátu 'ollama/<název>', např. 'ollama/qwen2.5-coder:14b'.
+    """
+    import urllib.request
+    import urllib.error
+
+    model_name = ollama_model.removeprefix('ollama/')
+
+    # Ollama chat API — system message jako první zpráva role=system
+    ollama_messages = []
+    if system:
+        ollama_messages.append({'role': 'system', 'content': system})
+    ollama_messages.extend(messages)
+
+    payload = json.dumps({
+        'model':    model_name,
+        'messages': ollama_messages,
+        'stream':   False,
+        'options':  {'num_predict': max_tokens},
+    }).encode()
+
+    req = urllib.request.Request(
+        OLLAMA_CHAT_URL, data=payload,
+        headers={'Content-Type': 'application/json'}
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            data = json.loads(r.read())
+    except urllib.error.URLError as e:
+        raise RuntimeError(
+            f"Ollama nedostupná ({OLLAMA_CHAT_URL}): {e}\n"
+            "  Spusť: ollama serve"
+        )
+
+    text       = data['message']['content']
+    tokens_in  = data.get('prompt_eval_count', 0)
+    tokens_out = data.get('eval_count', 0)
+
+    conn = init_db()
+    cache_store(conn, project, operation, ollama_model,
+                tokens_in, tokens_out, 0.0, phash, text, notes)
+    conn.close()
+    return text
+
+
 # ─── API wrapper ─────────────────────────────────────────────────────────────
 
 def call_api(project: str, operation: str, model: str,
              messages: list[dict], system: str | None = None,
              max_tokens: int = 4096, notes: str = '') -> str:
     """
-    Volá Anthropic API s automatickou cache a logováním.
+    Volá API s automatickým routingem, cache a logováním.
+
+    model='auto' → routing tabulka (ROUTING_RULES) rozhodne dle operation.
+    model='local' → vždy Ollama LOCAL_MODEL.
+    model='sonnet'/'opus'/... → vždy daný Claude model.
 
     Postup:
-      1. Spočítá SHA-256 hash promptu
-      2. Zkontroluje cache (TTL dle operace z CACHE_TTL)
-      3a. Cache hit  → zaloguje hit ($0), vrátí uloženou odpověď
-      3b. Cache miss → zavolá API, zaloguje + uloží odpověď do cache
-
-    Vyžaduje: pip install anthropic + ANTHROPIC_API_KEY v prostředí.
+      1. resolve_model() → zjistí cílový model (ollama/X nebo claude-X)
+      2. cache_lookup() → vrátí cached odpověď pokud v TTL
+      3a. Cache hit  → log hit ($0), vrátí odpověď
+      3b. Cache miss → API call (Ollama nebo Anthropic), log + cache_store
     """
-    try:
-        import anthropic as ant
-    except ImportError:
-        raise ImportError(
-            "Chybí balíček 'anthropic'.\n"
-            "  pip install anthropic\n"
-            "  export ANTHROPIC_API_KEY=sk-ant-..."
-        )
-
-    full_model = normalize_model(model)
+    full_model = resolve_model(operation, model)
     phash      = hash_prompt(messages, system)
     conn       = init_db()
 
@@ -233,8 +312,23 @@ def call_api(project: str, operation: str, model: str,
         log_cache_hit(conn, project, operation, full_model, phash)
         conn.close()
         return cached
+    conn.close()
 
-    # ── Reálné API volání ─────────────────────────────────────────────────────
+    # ── Routing: Ollama nebo Anthropic ────────────────────────────────────────
+    if full_model.startswith('ollama/'):
+        return call_api_ollama(project, operation, full_model,
+                               messages, system, max_tokens, phash, notes)
+
+    # ── Anthropic API ─────────────────────────────────────────────────────────
+    try:
+        import anthropic as ant
+    except ImportError:
+        raise ImportError(
+            "Chybí balíček 'anthropic'.\n"
+            "  pip install anthropic\n"
+            "  export ANTHROPIC_API_KEY=sk-ant-..."
+        )
+
     kwargs: dict = dict(model=full_model, max_tokens=max_tokens, messages=messages)
     if system:
         kwargs['system'] = system
@@ -247,6 +341,7 @@ def call_api(project: str, operation: str, model: str,
     tokens_out = response.usage.output_tokens
     cost       = calc_cost(full_model, tokens_in, tokens_out)
 
+    conn = init_db()
     cache_store(conn, project, operation, full_model,
                 tokens_in, tokens_out, cost, phash, text, notes)
     conn.close()
@@ -350,15 +445,13 @@ def cmd_billing(args: argparse.Namespace) -> None:
         SELECT COUNT(*) AS hits FROM token_log {hit_where}
     """, params).fetchone()
 
-    # Odhad úspor: pro každý hit najít odpovídající reálné volání a sečíst jeho cenu
+    # Odhad úspor: najít originální volání pro každý hit (subquery místo JOIN s aliasem)
     saved = conn.execute(f"""
-        SELECT COALESCE(SUM(orig.cost_usd), 0.0) AS saved_cost
-        FROM token_log AS hit
-        JOIN token_log AS orig
-          ON orig.prompt_hash = hit.prompt_hash
-         AND (orig.cache_hit = 0 OR orig.cache_hit IS NULL)
-         AND orig.response_text IS NOT NULL
-        {hit_where.replace('WHERE', 'WHERE hit.')}
+        SELECT COALESCE(SUM(cost_usd), 0.0) AS saved_cost
+        FROM token_log
+        WHERE prompt_hash IN (SELECT prompt_hash FROM token_log {hit_where})
+          AND (cache_hit = 0 OR cache_hit IS NULL)
+          AND response_text IS NOT NULL
     """, params).fetchone()
 
     # ── Po modelu ─────────────────────────────────────────────────────────────
@@ -559,6 +652,71 @@ def cmd_cache(args: argparse.Namespace) -> None:
     conn.close()
 
 
+# ─── Příkaz: route ───────────────────────────────────────────────────────────
+
+def cmd_route(args: argparse.Namespace) -> None:
+    """Zobrazí routing tabulku nebo otestuje routing pro konkrétní operaci."""
+    if getattr(args, 'test', None):
+        op    = args.test
+        dest  = resolve_model(op, 'auto')
+        label = f"{G}Ollama / {dest.removeprefix('ollama/')}{R}" \
+                if dest.startswith('ollama/') \
+                else f"{C}Claude API / {dest}{R}"
+        source = ROUTING_RULES.get(op)
+        note   = f"{D}(z pravidla '{op}'){R}" if source else f"{D}(výchozí pravidlo){R}"
+        print(f"\n  {D}Operace:{R} {Y}{op}{R}  →  {label}  {note}\n")
+        return
+
+    # ── Zobrazit celou tabulku ────────────────────────────────────────────────
+    print(f"\n{bold('ROUTING TABULKA')}")
+    print(f"  {D}Lokální model: {R}{C}{LOCAL_MODEL}{R}")
+    print()
+    print(f"{D}  {'Operace':<20} {'Cíl':<12} {'Model'}{R}")
+    print(D + '  ' + '─' * 58 + R)
+    for op, dest in ROUTING_RULES.items():
+        if op == '_default':
+            continue
+        resolved = resolve_model(op, 'auto')
+        if resolved.startswith('ollama/'):
+            dest_label = f"{G}local{R}"
+            model_label = f"{G}{resolved.removeprefix('ollama/')}{R}"
+        else:
+            dest_label = f"{C}cloud{R}"
+            model_label = f"{C}{resolved}{R}"
+        print(f"  {Y}{op:<20}{R} {dest_label:<20}  {model_label}")
+
+    # Výchozí
+    default_resolved = resolve_model('unknown_op', 'auto')
+    if default_resolved.startswith('ollama/'):
+        dl = f"{G}local{R}"; ml = f"{G}{default_resolved.removeprefix('ollama/')}{R}"
+    else:
+        dl = f"{C}cloud{R}"; ml = f"{C}{default_resolved}{R}"
+    print(f"  {D}{'_default (ostatní)':<20}{R} {dl:<20}  {ml}")
+    print()
+
+    # Statistiky z DB: kolik volání šlo kam
+    conn = init_db()
+    local_calls = conn.execute("""
+        SELECT COUNT(*) AS n, COALESCE(SUM(tokens_in+tokens_out),0) AS tokens
+        FROM token_log WHERE model LIKE 'ollama/%'
+          AND (cache_hit = 0 OR cache_hit IS NULL)
+    """).fetchone()
+    cloud_calls = conn.execute("""
+        SELECT COUNT(*) AS n, COALESCE(SUM(cost_usd),0) AS cost
+        FROM token_log WHERE model NOT LIKE 'ollama/%'
+          AND (cache_hit = 0 OR cache_hit IS NULL)
+    """).fetchone()
+    conn.close()
+
+    if local_calls['n'] or cloud_calls['n']:
+        print(f"{bold('HISTORICKÁ VYUŽITÍ')}")
+        print(f"  {G}Ollama (lokální):{R} {local_calls['n']:,} volání  "
+              f"{D}{local_calls['tokens']:,} tokenů  $0.00{R}")
+        print(f"  {C}Claude API:{R}      {cloud_calls['n']:,} volání  "
+              f"{Y}${cloud_calls['cost']:.4f}{R}")
+        print()
+
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -593,6 +751,11 @@ def main() -> None:
     p_cache.add_argument('--clear', action='store_true', help='Smazat expirovanou cache')
     p_cache.add_argument('--all',   action='store_true', help='S --clear: smazat veškerou cache')
 
+    # ── agent route ───────────────────────────────────────────────────────────
+    p_route = sub.add_parser('route', help='Zobrazit nebo otestovat model routing')
+    p_route.add_argument('--show', action='store_true', help='Zobrazit routing tabulku (výchozí)')
+    p_route.add_argument('--test', metavar='OPERATION', help='Otestovat routing pro operaci')
+
     # ── agent init ────────────────────────────────────────────────────────────
     sub.add_parser('init', help='Inicializovat ~/.ai-agent/ a databázi')
 
@@ -604,6 +767,8 @@ def main() -> None:
         cmd_billing(args)
     elif args.cmd == 'cache':
         cmd_cache(args)
+    elif args.cmd == 'route':
+        cmd_route(args)
     elif args.cmd == 'init':
         conn = init_db()
         conn.close()
