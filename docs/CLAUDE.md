@@ -19,9 +19,23 @@ Centrální dokumentační web pro `~/projects/`. Single-page app zobrazující 
 ## Soubory
 
 ```
-docserver.py     — celá aplikace (single-file), port 8080
-project.yaml     — metadata projektu
-CLAUDE.md        — tato dokumentace
+docserver.py          — SPA web (CLAUDE.md viewer), port 8080
+build.py              — JSON → HTML renderer (Jinja2, bez AI), CLI tool
+project.yaml          — metadata projektu
+CLAUDE.md             — tato dokumentace
+
+schema/
+  doc_schema.json     — JSON Schema pro validaci AI-generovaných dat
+
+templates/
+  project.html.j2     — Jinja2 šablona pro projektovou dokumentaci
+
+data/
+  {projekt}.json      — AI generuje POUZE tyto soubory
+  _test.json          — testovací/ukázkový soubor
+
+output/               — generované HTML soubory (build.py output, není verzováno)
+.build-state.json     — hash cache pro detekci změn (není verzováno)
 ```
 
 ## HTTP endpointy
@@ -59,9 +73,27 @@ journalctl --user -u docs -f
 - Path traversal: `candidate.resolve().parent == ROOT.resolve()` — odmítne `../../etc/passwd`
 - Žádné subprocess volání, žádné privilegované operace
 
+## build.py — JSON → HTML pipeline
+
+AI generuje `data/{projekt}.json` → `build.py` renderuje HTML (žádné AI).
+
+```bash
+python3 build.py                              # všechny projekty
+python3 build.py --project backup-dashboard   # jen jeden projekt
+python3 build.py --section cli-snapper        # hash detekce jen pro sekci (s --project)
+python3 build.py --check                      # jen validace JSON schématu
+python3 build.py --force                      # ignoruj hash cache
+python3 build.py --output /cesta/soubor.html  # vlastní výstup (pro migraci)
+```
+
+**Klíčové pravidlo pro AI:** Klíč pro seznam položek v blocích je `entries` (nikoli `items` — `items` je rezervované jméno Pythonu a způsobuje chybu v Jinja2).
+
+**Závislosti:** `jinja2` (povinná), `jsonschema` (volitelná, pro `--check`)
+
 ## Konvence
 
-- Single-file projekt, žádné závislosti mimo stdlib
+- `docserver.py` — single-file, žádné závislosti mimo stdlib
+- `build.py` — Jinja2 + volitelně jsonschema
 - HTML/CSS/JS inline v `docserver.py` jako raw string
 - marked.js načten z CDN — fallback na plain text pokud offline
 - Kód česky, UTF-8

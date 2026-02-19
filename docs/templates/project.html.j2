@@ -1,0 +1,515 @@
+{# project.html.j2 — Jinja2 šablona pro projektovou dokumentaci
+   Vstup: doc (dict z JSON), built_at (string)
+   Výstup: statický HTML soubor. Žádné AI volání.
+#}
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📖 {{ doc.display_name or doc.project }} — Dokumentace</title>
+<style>
+:root {
+    --bg: #0d1117;
+    --bg2: #161b22;
+    --bg3: #21262d;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text2: #8b949e;
+    --green: #3fb950;
+    --yellow: #d29922;
+    --red: #f85149;
+    --blue: #58a6ff;
+    --purple: #bc8cff;
+    --orange: #f0883e;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+}
+
+/* ── Top bar ── */
+.top-bar {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+.top-bar-title { font-size: 15px; font-weight: 600; }
+.top-bar-meta  { font-size: 12px; color: var(--text2); display: flex; align-items: center; gap: 10px; }
+
+/* ── Layout ── */
+.layout {
+    display: flex;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+    width: 260px;
+    min-width: 260px;
+    padding: 20px 16px;
+    border-right: 1px solid var(--border);
+    position: sticky;
+    top: 52px;
+    height: calc(100vh - 52px);
+    overflow-y: auto;
+}
+.sidebar h3 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text2);
+    margin: 16px 0 6px;
+    padding: 0 12px;
+}
+.sidebar a {
+    display: block;
+    padding: 5px 12px;
+    color: var(--text);
+    text-decoration: none;
+    font-size: 13px;
+    border-radius: 6px;
+    margin: 1px 0;
+    transition: background 0.1s;
+}
+.sidebar a:hover { background: var(--bg3); color: var(--blue); }
+.sidebar a.active { background: var(--bg3); color: var(--blue); }
+
+/* ── Hlavní obsah ── */
+.content {
+    flex: 1;
+    padding: 32px 48px;
+    max-width: 900px;
+}
+h1 { font-size: 30px; margin-bottom: 6px; }
+h2 {
+    font-size: 21px;
+    margin: 48px 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    color: var(--blue);
+    scroll-margin-top: 64px;
+}
+h3 { font-size: 16px; margin: 24px 0 8px; color: var(--text); }
+p { margin-bottom: 12px; color: var(--text); }
+ul, ol { margin: 8px 0 16px 24px; }
+li { margin-bottom: 4px; }
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+code {
+    background: var(--bg3);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 13px;
+    color: var(--orange);
+}
+pre {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 12px 0 20px;
+    color: var(--text);
+}
+
+/* ── Tabulky ── */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 20px;
+    font-size: 14px;
+}
+th, td {
+    padding: 9px 14px;
+    border: 1px solid var(--border);
+    text-align: left;
+}
+th { background: var(--bg3); font-weight: 600; color: var(--text2); }
+tr:hover td { background: var(--bg2); }
+
+/* ── Karty ── */
+.card-doc {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    margin: 14px 0;
+}
+.card-doc.warning { border-color: var(--yellow); background: #1c1500; }
+.card-doc.danger  { border-color: var(--red);    background: #1c0a0a; }
+.card-doc.info    { border-color: var(--blue);   background: #0a1929; }
+.card-doc.success { border-color: var(--green);  background: #0a1c0a; }
+.card-doc .card-title {
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+.card-doc p  { margin-bottom: 6px; }
+.card-doc ul { margin: 6px 0 6px 20px; }
+.card-doc pre {
+    margin: 10px 0 0;
+    background: var(--bg);
+    border-color: var(--border);
+}
+
+/* ── Badges ── */
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+}
+.badge-green  { background: #0d2818; color: var(--green); }
+.badge-yellow { background: #2a1e00; color: var(--yellow); }
+.badge-red    { background: #2d0a0a; color: var(--red); }
+.badge-blue   { background: #0c2d6b; color: var(--blue); }
+.badge-purple { background: #271052; color: var(--purple); }
+
+/* ── Meta řádek ── */
+.meta-row {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin: 6px 0 24px;
+    font-size: 13px;
+    color: var(--text2);
+}
+
+/* ── Back link ── */
+.btn-back {
+    background: var(--blue);
+    color: white !important;
+    padding: 6px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 13px;
+}
+.btn-back:hover { opacity: 0.85; text-decoration: none; }
+
+/* ── Live Status Widget ── */
+.live-status {
+    background: linear-gradient(135deg, #0d1117 0%, #1a1e2e 100%);
+    border: 2px solid var(--green);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 24px 0;
+}
+.live-status h3 { color: var(--green); margin: 0 0 16px; display: flex; align-items: center; gap: 8px; }
+.live-status > p { color: var(--text2); margin-bottom: 16px; }
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+}
+.status-item { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+.status-item-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
+.status-item-value { font-size: 18px; font-weight: 600; margin-top: 4px; }
+.status-item-value.ok    { color: var(--green); }
+.status-item-value.warn  { color: var(--yellow); }
+.status-item-value.error { color: var(--red); }
+.pulse {
+    width: 8px; height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+    animation: pulse-anim 2s ease-in-out infinite;
+}
+@keyframes pulse-anim { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+@media (max-width: 900px) {
+    .sidebar { display: none; }
+    .content { padding: 20px 16px; }
+}
+@media print {
+    .top-bar, .sidebar { display: none !important; }
+    .content { max-width: 100% !important; padding: 20px !important; }
+    .layout  { display: block !important; }
+    body     { background: white !important; color: black !important; }
+    h1, h2, h3 { color: #003080 !important; }
+    h2 { border-bottom: 1px solid #ccc !important; }
+    pre, code { background: #f5f5f5 !important; border: 1px solid #ccc !important; color: black !important; }
+    th  { background: #e8e8e8 !important; color: black !important; }
+    td  { color: black !important; }
+    .card-doc { background: #f9f9f9 !important; border: 1px solid #999 !important; color: black !important; }
+    .card-doc.warning { background: #fff9e6 !important; border-color: #cc9900 !important; }
+    .card-doc.danger  { background: #fff0f0 !important; border-color: #cc0000 !important; }
+    .card-doc.info    { background: #f0f4ff !important; border-color: #0033cc !important; }
+    .card-doc.success { background: #f0fff4 !important; border-color: #006600 !important; }
+    .badge-green  { background: #d4edda !important; color: #155724 !important; }
+    .badge-yellow { background: #fff3cd !important; color: #856404 !important; }
+    .badge-red    { background: #f8d7da !important; color: #721c24 !important; }
+    .badge-blue   { background: #d1ecf1 !important; color: #0c5460 !important; }
+}
+</style>
+</head>
+<body>
+
+{# ── Top bar ── #}
+<div class="top-bar">
+    <div class="top-bar-title">
+        📖 {{ doc.display_name or doc.project }}{% if doc.version %} <span style="font-weight:400;color:var(--text2)">v{{ doc.version }}</span>{% endif %}
+    </div>
+    <div class="top-bar-meta">
+        {% if doc.status %}
+        <span class="badge badge-{{ 'green' if doc.status == 'active' else 'yellow' if doc.status == 'wip' else 'purple' if doc.status == 'planned' else 'red' }}">{{ doc.status }}</span>
+        {% endif %}
+        <span>Generováno {{ built_at }}</span>
+        {% if doc.back_link %}
+        <a href="{{ doc.back_link.href }}" class="btn-back">{{ doc.back_link.label }}</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="layout">
+
+{# ── Sidebar ── #}
+<nav class="sidebar">
+    {% if doc.modules %}
+    <h3>Kód</h3>
+    <a href="#moduly">📦 Moduly</a>
+    {% endif %}
+    {% if doc.sections %}
+    <h3>Dokumentace</h3>
+    {% for section in doc.sections %}
+    <a href="#{{ section.id }}">{% if section.icon %}{{ section.icon }} {% endif %}{{ section.title }}</a>
+    {% endfor %}
+    {% endif %}
+</nav>
+
+{# ── Hlavní obsah ── #}
+<main class="content">
+
+<h1>{{ doc.display_name or doc.project }}</h1>
+
+{% if doc.description %}
+<p style="color:var(--text2);font-size:15px;margin-bottom:8px;">{{ doc.description }}</p>
+{% endif %}
+
+<div class="meta-row">
+    {% if doc.tech %}<span>⚙️ {{ doc.tech | join(', ') }}</span>{% endif %}
+    {% if doc.port %}<span>🔌 port {{ doc.port }}</span>{% endif %}
+    {% if doc.updated %}<span>📅 aktualizováno {{ doc.updated }}</span>{% endif %}
+</div>
+
+{% if doc.access %}
+<table>
+    <thead><tr><th>Síť</th><th>URL</th></tr></thead>
+    <tbody>
+    {% if doc.access.local %}
+    <tr><td>Lokální</td><td><code>{{ doc.access.local }}</code></td></tr>
+    {% endif %}
+    {% if doc.access.lan %}
+    <tr><td>LAN</td><td><code>{{ doc.access.lan }}</code></td></tr>
+    {% endif %}
+    {% if doc.access.tailscale %}
+    <tr><td>Tailscale</td><td><code>{{ doc.access.tailscale }}</code></td></tr>
+    {% endif %}
+    </tbody>
+</table>
+{% endif %}
+
+{# ══ Kódové moduly ══ #}
+{% if doc.modules %}
+<h2 id="moduly">📦 Kódové moduly</h2>
+
+<table>
+    <thead><tr><th>Modul</th><th>Soubor</th><th>Účel</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for m in doc.modules %}
+    <tr>
+        <td><strong>{{ m.name }}</strong></td>
+        <td>{% if m.file %}<code>{{ m.file | e }}</code>{% else %}—{% endif %}</td>
+        <td>{{ m.purpose }}</td>
+        <td>
+        {% if m.status == 'stable' %}<span class="badge badge-green">stable</span>
+        {% elif m.status == 'beta' %}<span class="badge badge-yellow">beta</span>
+        {% elif m.status == 'wip' %}<span class="badge badge-yellow">wip</span>
+        {% elif m.status == 'deprecated' %}<span class="badge badge-red">deprecated</span>
+        {% else %}<span class="badge badge-blue">{{ m.status }}</span>{% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+{% for m in doc.modules %}
+{% if m.public_methods %}
+<h3>
+    {{ m.name }}
+    {% if m.file %}<span style="font-size:13px;font-weight:400;color:var(--text2)">— <code>{{ m.file | e }}</code></span>{% endif %}
+</h3>
+{% if m.notes %}<p style="color:var(--text2);font-size:13px;">{{ m.notes }}</p>{% endif %}
+<table>
+    <thead><tr><th>Metoda</th><th>Parametry</th><th>Vrací</th><th>Popis</th></tr></thead>
+    <tbody>
+    {% for method in m.public_methods %}
+    <tr>
+        <td><code>{{ method.name | e }}()</code></td>
+        <td><code style="font-size:12px;">{{ (method.params or '—') | e }}</code></td>
+        <td>{{ method.returns or '—' }}</td>
+        <td>{{ method.description }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% elif m.notes %}
+<h3>{{ m.name }}</h3>
+<p style="color:var(--text2);">{{ m.notes }}</p>
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{# ══ Dokumentační sekce ══ #}
+{% for section in doc.sections %}
+<h2 id="{{ section.id }}">{% if section.icon %}{{ section.icon }} {% endif %}{{ section.title }}</h2>
+
+{% for blk in section.blocks %}
+
+{% if blk.type == 'text' %}
+<p>{{ blk.text }}</p>
+
+{% elif blk.type == 'heading' %}
+<h3>{{ blk.text }}</h3>
+
+{% elif blk.type == 'code' %}
+<pre>{{ blk.text | e }}</pre>
+
+{% elif blk.type == 'list' %}
+{% if blk.ordered %}
+<ol>
+{% for item in blk.entries %}<li>{{ item }}</li>
+{% endfor %}
+</ol>
+{% else %}
+<ul>
+{% for item in blk.entries %}<li>{{ item }}</li>
+{% endfor %}
+</ul>
+{% endif %}
+
+{% elif blk.type == 'table' %}
+<table>
+    <thead>
+    <tr>{% for h in blk.headers %}<th>{{ h }}</th>{% endfor %}</tr>
+    </thead>
+    <tbody>
+    {% for row in blk.rows %}
+    <tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+{% elif blk.type == 'live_status' %}
+<div class="live-status">
+    <h3>
+        <span class="pulse"></span>
+        Live Project Status
+        <button onclick="updateLiveStatus()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:13px;margin-left:8px;" title="Aktualizovat">🔄</button>
+    </h3>
+    <p>Aktuální stav systému &nbsp;|&nbsp; Klikněte 🔄 pro aktualizaci</p>
+    <div class="status-grid">
+        <div class="status-item"><div class="status-item-label">Dashboard</div><div class="status-item-value ok" id="status-dashboard">● Running</div></div>
+        <div class="status-item"><div class="status-item-label">Snapper Snapshoty</div><div class="status-item-value" id="status-snapshots">—</div></div>
+        <div class="status-item"><div class="status-item-label">Borg Archivy</div><div class="status-item-value" id="status-borg">—</div></div>
+        <div class="status-item"><div class="status-item-label">Backup Disk</div><div class="status-item-value" id="status-disk">—</div></div>
+        <div class="status-item"><div class="status-item-label">Root Disk</div><div class="status-item-value" id="status-root">—</div></div>
+        <div class="status-item"><div class="status-item-label">Poslední Borg</div><div class="status-item-value" id="status-last-borg">—</div></div>
+        <div class="status-item"><div class="status-item-label">Poslední Sync</div><div class="status-item-value" id="status-last-sync">—</div></div>
+        <div class="status-item"><div class="status-item-label">Health Status</div><div class="status-item-value" id="status-health">—</div></div>
+    </div>
+    <div style="margin-top:16px;font-size:13px;color:var(--text2);">
+        <strong>Poslední update:</strong> <span id="status-timestamp">—</span>
+    </div>
+</div>
+<script>
+async function updateLiveStatus() {
+    const set = (id, text, cls) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = text;
+        el.className = 'status-item-value' + (cls ? ' ' + cls : '');
+    };
+    try {
+        const r = await fetch('{{ blk.api_endpoint }}');
+        const data = await r.json();
+        if (data.snapshots?.count !== undefined) set('status-snapshots', data.snapshots.count, 'ok');
+        if (data.borg?.count !== undefined) set('status-borg', data.borg.count, 'ok');
+        if (data.backup_disk) {
+            if (data.backup_disk.mounted)
+                set('status-disk', data.backup_disk.used_percent + '% použito', data.backup_disk.used_percent > 85 ? 'warn' : 'ok');
+            else
+                set('status-disk', '⚠ Unmounted', 'error');
+        }
+        if (data.root_disk)
+            set('status-root', data.root_disk.used_percent + '% použito', data.root_disk.used_percent > 85 ? 'warn' : 'ok');
+        if (data.borg?.last_backup) set('status-last-borg', data.borg.last_backup, 'ok');
+        if (data.sync?.last_run) set('status-last-sync', data.sync.last_run, 'ok');
+        if (data.warnings !== undefined)
+            set('status-health', data.warnings.length === 0 ? '✓ OK' : '⚠ ' + data.warnings.length + ' varování', data.warnings.length === 0 ? 'ok' : 'warn');
+        document.getElementById('status-timestamp').textContent = new Date().toLocaleString('cs-CZ');
+    } catch(e) {
+        set('status-dashboard', '⚠ Offline', 'error');
+    }
+}
+updateLiveStatus();
+</script>
+
+{% elif blk.type == 'card' %}
+<div class="card-doc {{ blk.variant or '' }}">
+    <div class="card-title">{{ blk.title }}</div>
+    {% if blk.text %}<p>{{ blk.text }}</p>{% endif %}
+    {% if blk.entries %}
+    <ul>
+    {% for item in blk.entries %}<li>{{ item }}</li>
+    {% endfor %}
+    </ul>
+    {% endif %}
+    {% if blk.code %}<pre>{{ blk.code | e }}</pre>{% endif %}
+</div>
+
+{% endif %}
+{% endfor %}
+{% endfor %}
+
+</main>
+</div>
+
+<script>
+// Zvýraznění aktivní sekce v sidebar při scrollu
+const headings = document.querySelectorAll('h2[id]');
+const links    = document.querySelectorAll('.sidebar a');
+
+const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            links.forEach(l => l.classList.remove('active'));
+            const active = document.querySelector(`.sidebar a[href="#${entry.target.id}"]`);
+            if (active) active.classList.add('active');
+        }
+    });
+}, { threshold: 0.2, rootMargin: '-52px 0px -60% 0px' });
+
+headings.forEach(h => observer.observe(h));
+</script>
+
+</body>
+</html>

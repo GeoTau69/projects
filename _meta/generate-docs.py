@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
 """
-Generátor root CLAUDE.md z project.yaml souborů.
-Spuštění: python3 _meta/generate-docs.py
+Generátor sekce Projekty v root CLAUDE.md z project.yaml souborů.
+Přepisuje POUZE blok mezi markery (statické sekce zachovány).
+Spuštění: python3 _meta/generate-docs.py  nebo  make docs
 """
 
-import os
 import yaml
 from pathlib import Path
 from datetime import datetime
 
 ROOT = Path(__file__).parent.parent
-OUTPUT = ROOT / "CLAUDE.md"
+MASTER = ROOT / "CLAUDE.md"
+MARKER_START = "<!-- PROJEKTY:START -->"
+MARKER_END = "<!-- PROJEKTY:END -->"
+
+STATUS_ICON = {"active": "🟢", "wip": "🟡", "planned": "⚪", "archived": "📦"}
+
 
 def load_projects() -> list[dict]:
-    """Načte všechny project.yaml soubory"""
     projects = []
     for entry in sorted(ROOT.iterdir()):
         if not entry.is_dir() or entry.name.startswith((".", "_")):
@@ -23,64 +27,36 @@ def load_projects() -> list[dict]:
             with open(yaml_path, encoding="utf-8") as f:
                 data = yaml.safe_load(f)
             data["_dir"] = entry.name
+            data["_has_claude"] = (entry / "CLAUDE.md").exists()
             projects.append(data)
     return projects
 
-def generate_markdown(projects: list[dict]) -> str:
-    """Vygeneruje obsah root CLAUDE.md"""
-    lines = []
-    lines.append("# Projektový workspace")
-    lines.append("")
-    lines.append(f"> Auto-generováno: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-    lines.append(f"> Počet projektů: {len(projects)}")
-    lines.append("")
 
-    # Globální konvence
-    lines.append("## Globální konvence")
+def generate_block(projects: list[dict]) -> str:
+    lines = [MARKER_START]
+    lines.append(f"<!-- generováno: {datetime.now().strftime('%Y-%m-%d %H:%M')} -->")
     lines.append("")
-    lines.append("- **Jazyk kódu/komentářů**: čeština")
-    lines.append("- **Kódování**: UTF-8 (vždy)")
-    lines.append("- **Izolace**: každý projekt je self-contained, žádné cross-imports")
-    lines.append("- **Metadata**: každý projekt má `project.yaml` + vlastní `CLAUDE.md`")
-    lines.append("- **Git**: monorepo, projekty jako adresáře v rootu")
-    lines.append("")
-
-    # Přehled projektů
-    status_icons = {
-        "active": "🟢",
-        "wip": "🟡",
-        "planned": "⚪",
-        "archived": "📦",
-    }
-
-    lines.append("## Projekty")
-    lines.append("")
+    lines.append("| Projekt | Status | Tech | Port | Popis | Detail |")
+    lines.append("|---------|--------|------|------|-------|--------|")
 
     for p in projects:
-        icon = status_icons.get(p.get("status", "planned"), "❓")
-        name = p.get("display_name", p.get("name", p["_dir"]))
+        icon = STATUS_ICON.get(p.get("status", "planned"), "❓")
         status = p.get("status", "?")
-        desc = p.get("description", "")
+        name = p["_dir"]
         lang = p.get("language", "?")
-        ptype = p.get("type", "?")
-        port = p.get("port")
-        service = p.get("systemd_service")
-        tags = ", ".join(p.get("tags", []))
+        ptype = p.get("type", "")
+        tech = f"{lang}/{ptype}" if ptype and ptype not in (lang, "web-app") else lang
+        port = str(p.get("port", "–"))
+        desc = p.get("description", "")
+        if len(desc) > 55:
+            desc = desc[:52] + "..."
+        detail = f"`{name}/CLAUDE.md`" if p["_has_claude"] else "⚠️ chybí"
+        lines.append(f"| {icon} `{name}/` | {status} | {tech} | {port} | {desc} | {detail} |")
 
-        lines.append(f"### {icon} {name} (`{p['_dir']}/`)")
-        lines.append("")
-        lines.append(f"- **Stav**: {status}")
-        lines.append(f"- **Typ**: {ptype} | **Jazyk**: {lang}")
-        if port:
-            lines.append(f"- **Port**: {port}")
-        if service:
-            lines.append(f"- **Služba**: `{service}`")
-        lines.append(f"- **Popis**: {desc}")
-        if tags:
-            lines.append(f"- **Tagy**: {tags}")
-        lines.append("")
-
+    lines.append("")
+    lines.append(MARKER_END)
     return "\n".join(lines)
+
 
 def main():
     projects = load_projects()
@@ -88,11 +64,26 @@ def main():
         print("Žádné projekty s project.yaml nenalezeny.")
         return
 
-    content = generate_markdown(projects)
-    with open(OUTPUT, "w", encoding="utf-8") as f:
-        f.write(content)
+    content = MASTER.read_text(encoding="utf-8")
 
-    print(f"Vygenerován {OUTPUT} ({len(projects)} projektů)")
+    start_idx = content.find(MARKER_START)
+    end_idx = content.find(MARKER_END)
+
+    if start_idx == -1 or end_idx == -1:
+        print(f"CHYBA: Markery {MARKER_START!r} / {MARKER_END!r} nenalezeny v {MASTER}")
+        return
+
+    end_idx += len(MARKER_END)
+    new_block = generate_block(projects)
+    new_content = content[:start_idx] + new_block + content[end_idx:]
+
+    MASTER.write_text(new_content, encoding="utf-8")
+    print(f"Aktualizován {MASTER} ({len(projects)} projektů)")
+
+    missing = [p["_dir"] for p in projects if not p["_has_claude"]]
+    if missing:
+        print(f"⚠️  Chybí slave CLAUDE.md: {', '.join(missing)}")
+
 
 if __name__ == "__main__":
     main()

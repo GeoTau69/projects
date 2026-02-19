@@ -1,0 +1,439 @@
+{
+  "project": "backup-dashboard",
+  "display_name": "Fedora Backup Dashboard",
+  "version": "1.0.0",
+  "updated": "2026-02-19",
+  "description": "Kompletní dokumentace 3-vrstvého zálohovacího systému pro Fedora 43.",
+  "status": "active",
+  "port": 8090,
+  "tech": ["python", "fastapi", "jinja2", "uvicorn"],
+  "back_link": {"href": "/", "label": "🏠 Zpět na Dashboard"},
+  "access": {
+    "local": "http://localhost:8090",
+    "lan": "http://192.168.0.101:8090",
+    "tailscale": "http://fedora:8090"
+  },
+  "modules": [
+    {
+      "id": "helpers",
+      "name": "helpers.py",
+      "file": "helpers.py",
+      "purpose": "Sdílené utility: CONFIG, Jinja2 templates, logování, spouštění příkazů.",
+      "status": "stable",
+      "public_methods": [
+        {"name": "log_action",  "params": "message: str", "returns": "None",      "description": "Zapíše akci do aplikačního logu (logs/dashboard.log)."},
+        {"name": "run_cmd",     "params": "cmd: list[str]", "returns": "str",     "description": "Spustí příkaz, vrátí stdout. Vyvolá výjimku při chybě."},
+        {"name": "run_sudo",    "params": "cmd: list[str]", "returns": "str",     "description": "Spustí příkaz přes sudo. Pro privilegované operace (snapper, btrfs)."},
+        {"name": "get_borg_env","params": "", "returns": "dict",                   "description": "Vrátí env dict s BORG_PASSCOMMAND pro autentizaci Borg."}
+      ],
+      "dependencies": [],
+      "notes": "CONFIG dict obsahuje centrální konfiguraci: cesty k diskům, borg repo, excludes. templates = Jinja2Templates sdílená pro všechny routery."
+    },
+    {
+      "id": "snapshots",
+      "name": "routes/snapshots.py",
+      "file": "routes/snapshots.py",
+      "purpose": "Snapper endpointy (create, delete, rollback, diff) a datová funkce get_snapper_list().",
+      "status": "stable",
+      "public_methods": [
+        {"name": "get_snapper_list", "params": "", "returns": "list[dict]", "description": "Vrátí seznam Snapper snapshotů. Importována a volána v routes/system.py pro dashboard."}
+      ],
+      "dependencies": ["helpers.run_sudo"]
+    },
+    {
+      "id": "borg",
+      "name": "routes/borg.py",
+      "file": "routes/borg.py",
+      "purpose": "Borg Backup endpointy (create, delete, restore, files, tree) a datové funkce.",
+      "status": "stable",
+      "public_methods": [
+        {"name": "get_borg_archives", "params": "", "returns": "list[dict]", "description": "Vrátí seznam Borg archivů. Importována v routes/system.py."},
+        {"name": "get_borg_info",    "params": "", "returns": "dict",       "description": "Vrátí info o Borg repu (size, num_archives, last_modified)."}
+      ],
+      "dependencies": ["helpers.run_cmd", "helpers.get_borg_env"]
+    },
+    {
+      "id": "git",
+      "name": "routes/git.py",
+      "file": "routes/git.py",
+      "purpose": "Git správa workspace přes web UI — log, diff, commit, rollback.",
+      "status": "stable",
+      "public_methods": [
+        {"name": "get_git_log",    "params": "",          "returns": "list[dict]", "description": "Historie commitů (hash, zpráva, datum, autor)."},
+        {"name": "get_git_status", "params": "",          "returns": "dict",       "description": "Aktuální git status — staged a unstaged soubory."},
+        {"name": "get_git_diff",   "params": "commit: str", "returns": "str",      "description": "Textový diff konkrétního commitu."}
+      ],
+      "dependencies": ["helpers.run_cmd"],
+      "notes": "Web UI dostupné na /git. Slouží pro commitování změn v ~/projects/ z prohlížeče."
+    },
+    {
+      "id": "system",
+      "name": "routes/system.py",
+      "file": "routes/system.py",
+      "purpose": "Hlavní dashboard endpointy: health, refresh, sync operace, logy, export, nuclear delete.",
+      "status": "stable",
+      "public_methods": [
+        {"name": "get_backup_disk_status", "params": "", "returns": "dict",       "description": "Stav backup disku: mounted, used_percent, free, total."},
+        {"name": "get_root_disk_status",   "params": "", "returns": "dict",       "description": "Stav root disku: used_percent, free, total."},
+        {"name": "get_health_status",      "params": "", "returns": "dict",       "description": "Agregovaný health check: snapshots, borg, disky, timery. Vrací seznam warnings."},
+        {"name": "get_systemd_timers",     "params": "", "returns": "list[dict]", "description": "Stav systemd timerů (borg-backup, snapshot-sync, snapper-timeline, snapper-cleanup)."},
+        {"name": "get_sync_snapshots",     "params": "", "returns": "list[dict]", "description": "Seznam snapshotů na backup disku (/mnt/fedora-backups/system-snapshots/)."},
+        {"name": "get_dashboard_log",      "params": "n: int = 100", "returns": "list[str]", "description": "Posledních N řádků z logs/dashboard.log."}
+      ],
+      "dependencies": ["helpers", "routes.snapshots.get_snapper_list", "routes.borg.get_borg_archives"]
+    }
+  ],
+  "sections": [
+    {
+      "id": "live-status",
+      "title": "Live Status",
+      "icon": "📊",
+      "blocks": [
+        {"type": "live_status", "api_endpoint": "/api/health"}
+      ]
+    },
+    {
+      "id": "architektura",
+      "title": "Architektura",
+      "icon": "🗃️",
+      "blocks": [
+        {"type": "text", "text": "3-vrstvá zálohovací architektura: Snapper snapshoty (vrstva 1), Btrfs sync na záložní disk (vrstva 2) a Borg backup šifrovaných dat (vrstva 3). Vše ovládáno přes Dashboard na portu 8090."},
+        {"type": "table",
+          "headers": ["Komponenta", "Technologie", "Co zálohuje", "Kam"],
+          "rows": [
+            ["<span class=\"badge badge-green\">Vrstva 1</span> Snapper", "Btrfs snapshoty", "Celý root filesystem <code>/</code>", "<code>/.snapshots/</code> (lokální)"],
+            ["<span class=\"badge badge-yellow\">Vrstva 2</span> Btrfs Sync", "btrfs send/receive", "Kopie snapshotů z /.snapshots/", "<code>/mnt/fedora-backups/system-snapshots/</code>"],
+            ["<span class=\"badge badge-purple\">Vrstva 3</span> Borg", "Borg Backup (šifrovaný, dedup)", "<code>/home/geo/</code>", "<code>/mnt/fedora-backups/borg-repo/</code>"]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "vrstvy",
+      "title": "3 vrstvy záloh",
+      "icon": "📚",
+      "blocks": [
+        {"type": "heading", "text": "Vrstva 1: Snapper (Btrfs snapshoty)"},
+        {"type": "card", "variant": "info", "title": "📸 Lokální snapshoty celého systému",
+          "entries": [
+            "<strong>Co:</strong> Atomický snapshot Btrfs subvolumu <code>/</code>",
+            "<strong>Kdy automaticky:</strong> Každou hodinu (timeline), před/po DNF operacích",
+            "<strong>Retence:</strong> 5 hodinových, 7 denních, 4 týdenních, 6 měsíčních, 2 ročních",
+            "<strong>Rychlost:</strong> Okamžitý (&lt; 1 sekunda)",
+            "<strong>Rollback:</strong> <code>snapper rollback ČÍSLO</code> + reboot",
+            "<strong>GOLDEN snapshot:</strong> Referenční čistý stav systému, chráněný před smazáním"
+          ]
+        },
+        {"type": "heading", "text": "Vrstva 2: Btrfs Send/Receive"},
+        {"type": "card", "variant": "info", "title": "🔄 Sync snapshotů na záložní disk",
+          "entries": [
+            "<strong>Co:</strong> Kopie snapshotů z <code>/.snapshots/</code> na <code>/mnt/fedora-backups/</code>",
+            "<strong>Kdy:</strong> Denně ve 03:32 (systemd timer)",
+            "<strong>Účel:</strong> Záchrana při selhání systémového disku",
+            "<strong>Typ:</strong> Inkrementální (pouze změny)"
+          ]
+        },
+        {"type": "heading", "text": "Vrstva 3: Borg Backup"},
+        {"type": "card", "variant": "info", "title": "🔐 Šifrované zálohy /home",
+          "entries": [
+            "<strong>Co:</strong> Celý <code>/home/geo/</code> (s excludes: cache, thinclient_drives)",
+            "<strong>Kdy:</strong> Denně ve 03:13 (systemd timer)",
+            "<strong>Šifrování:</strong> Ano (passphrase v <code>~/.borg-passphrase</code>)",
+            "<strong>Deduplikace:</strong> Ano (identické bloky uloženy jen jednou)",
+            "<strong>Komprese:</strong> zstd",
+            "<strong>Browse:</strong> Procházení souborů v archivu a obnovení jednotlivých souborů"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "soubory",
+      "title": "Soubory a cesty",
+      "icon": "📁",
+      "blocks": [
+        {"type": "table",
+          "headers": ["Cesta", "Popis"],
+          "rows": [
+            ["<code>~/projects/backup-dashboard/app.py</code>", "Hlavní aplikace dashboardu"],
+            ["<code>~/projects/backup-dashboard/templates/</code>", "HTML šablony (Jinja2)"],
+            ["<code>~/projects/backup-dashboard/logs/dashboard.log</code>", "Aplikační log"],
+            ["<code>/etc/systemd/system/backup-dashboard.service</code>", "Systemd service (system)"],
+            ["<code>/.snapshots/</code>", "Snapper snapshoty (lokální, na root disku)"],
+            ["<code>/mnt/fedora-backups/borg-repo/</code>", "Borg repository (šifrovaná)"],
+            ["<code>/mnt/fedora-backups/system-snapshots/</code>", "Sync snapshoty z Vrstva 2"],
+            ["<code>~/.borg-passphrase</code>", "Borg heslo (chraň jako klíč!)"],
+            ["<code>~/borg-key-backup.txt</code>", "Exportovaný Borg klíč (záloha)"]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dashboard",
+      "title": "Dashboard",
+      "icon": "🖥️",
+      "blocks": [
+        {"type": "text", "text": "Dashboard je dostupný na:"},
+        {"type": "list", "entries": [
+          "Lokálně: <code>http://localhost:8090/</code>",
+          "Ze sítě: <code>http://192.168.0.101:8090/</code>",
+          "Přes Tailscale: <code>http://fedora:8090/</code>"
+        ]},
+        {"type": "heading", "text": "Sekce dashboardu"},
+        {"type": "table",
+          "headers": ["Sekce", "Funkce"],
+          "rows": [
+            ["💾 Disky", "Stav root a backup disku, využití místa"],
+            ["⏰ Automatické úlohy", "Stav systemd timerů, příští/poslední spuštění"],
+            ["📸 Snapper Snapshoty", "Seznam, vytvoření, smazání, diff, rollback"],
+            ["🔐 Borg Archivy", "Seznam, vytvoření, browse souborů, restore, smazání"],
+            ["🔄 Btrfs Sync", "Ruční sync snapshotů na backup disk"],
+            ["🚀 Full Flow", "Kompletní záloha v jednom kroku (snapshot + borg + sync)"],
+            ["☢️ Nuclear Delete", "Smazání všech záloh (chráněno heslem + 2× potvrzením)"],
+            ["📋 Log", "Historie akcí dashboardu, export, smazání"]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rucni-snapshot",
+      "title": "Ruční snapshot",
+      "icon": "📸",
+      "blocks": [
+        {"type": "list", "ordered": true, "entries": [
+          "Otevři dashboard",
+          "V sekci <strong>Snapper Snapshoty</strong> zadej popis (např. \"Před instalací NVIDIA\")",
+          "Klikni <strong>+ Snapshot</strong>",
+          "Snapshot se vytvoří okamžitě (&lt; 1 s)"
+        ]},
+        {"type": "card", "variant": "success", "title": "💡 Tip",
+          "text": "Vždy dělej snapshot PŘED rizikovými operacemi: aktualizace kernelu, instalace ovladačů, změny konfigurace."
+        }
+      ]
+    },
+    {
+      "id": "rucni-borg",
+      "title": "Ruční Borg backup",
+      "icon": "🔐",
+      "blocks": [
+        {"type": "list", "ordered": true, "entries": [
+          "V sekci <strong>Borg Archivy</strong> zadej komentář",
+          "Klikni <strong>+ Backup</strong>",
+          "Backup trvá podle velikosti dat (typicky 1–5 minut)",
+          "Název archivu: <code>[komentář-slug]-[YYYYMMDD-HHMMSS]</code>"
+        ]}
+      ]
+    },
+    {
+      "id": "full-flow",
+      "title": "Full Flow (3-v-1)",
+      "icon": "🚀",
+      "blocks": [
+        {"type": "text", "text": "Provede kompletní zálohu ve 3 krocích:"},
+        {"type": "list", "ordered": true, "entries": [
+          "<span class=\"badge badge-blue\">Krok 1</span> Vytvoří Snapper snapshot (popis s prefixem [FULL])",
+          "<span class=\"badge badge-purple\">Krok 2</span> Spustí Borg backup celého /home",
+          "<span class=\"badge badge-yellow\">Krok 3</span> Sync snapshotů na backup disk"
+        ]},
+        {"type": "card", "variant": "warning", "title": "⏱️ Čas",
+          "text": "Full Flow trvá typicky 2–10 minut. Stránka se po dokončení automaticky refreshne."
+        }
+      ]
+    },
+    {
+      "id": "restore",
+      "title": "Obnovení dat",
+      "icon": "♻️",
+      "blocks": [
+        {"type": "heading", "text": "Ze Snapper snapshotu (systémové soubory)"},
+        {"type": "code", "lang": "bash", "text": "# Najdi snapshot\nsudo snapper -c root list\n\n# Procházej soubory\nls /.snapshots/ČÍSLO/snapshot/cesta/k/souboru\n\n# Kopíruj zpět\nsudo cp /.snapshots/ČÍSLO/snapshot/etc/config.conf /etc/config.conf"},
+        {"type": "heading", "text": "Z Borg archivu (home soubory) — přes Dashboard"},
+        {"type": "list", "ordered": true, "entries": [
+          "Klikni ♻️ u archivu v sekci Borg Archivy",
+          "Procházej adresářovou strukturu (klik na 📁 složky)",
+          "Vyber soubor/složku kliknutím na ☑️",
+          "Zvol režim: <strong>Do cílové složky</strong> (bezpečné) nebo <strong>Na původní místo</strong> (přepíše)",
+          "Klikni <strong>Obnovit</strong>"
+        ]},
+        {"type": "heading", "text": "Z Borg archivu — přes CLI"},
+        {"type": "code", "lang": "bash", "text": "export BORG_PASSCOMMAND=\"cat ~/.borg-passphrase\"\n\n# Seznam archivů\nborg list /mnt/fedora-backups/borg-repo\n\n# Obnovit jeden soubor\ncd /tmp\nborg extract /mnt/fedora-backups/borg-repo::ARCHIV home/geo/cesta/soubor\n\n# Obnovit vše\ncd /\nborg extract /mnt/fedora-backups/borg-repo::ARCHIV"}
+      ]
+    },
+    {
+      "id": "rollback",
+      "title": "Rollback systému",
+      "icon": "⏪",
+      "blocks": [
+        {"type": "card", "variant": "danger", "title": "⚠️ Rollback vrátí CELÝ systém do stavu snapshotu",
+          "text": "Všechny změny po snapshotu budou ztraceny. /home zůstane nedotčen (je na zvláštním subvolumu jen pokud je separátní)."
+        },
+        {"type": "heading", "text": "Z dashboardu"},
+        {"type": "list", "ordered": true, "entries": [
+          "Klikni ⏪ u snapshotu",
+          "Potvrď 2× bezpečnostní dialog",
+          "<strong>RESTARTUJ systém</strong> — rollback se dokončí až po rebootu"
+        ]},
+        {"type": "heading", "text": "Z CLI"},
+        {"type": "code", "lang": "bash", "text": "sudo snapper -c root rollback ČÍSLO\nsudo reboot"},
+        {"type": "heading", "text": "Z GRUBu (systém nebootuje)"},
+        {"type": "list", "ordered": true, "entries": [
+          "Při startu vyber <strong>Fedora Snapshots</strong> v GRUB menu",
+          "Vyber požadovaný snapshot",
+          "Po nabootování spusť: <code>sudo snapper -c root rollback ČÍSLO &amp;&amp; sudo reboot</code>"
+        ]}
+      ]
+    },
+    {
+      "id": "nuclear",
+      "title": "Nuclear Delete",
+      "icon": "☢️",
+      "blocks": [
+        {"type": "card", "variant": "danger", "title": "NEVRATNÉ smazání všech záloh",
+          "text": "Chráněno: heslem + potvrzovacím textem <code>SMAZAT VSE</code> + 2× confirm dialog. Smaže:",
+          "entries": [
+            "Všechny Snapper snapshoty (kromě #0 current a GOLDEN)",
+            "Všechny Borg archivy",
+            "Všechny sync snapshoty z backup disku"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cli-snapper",
+      "title": "CLI: Snapper",
+      "icon": "⌨️",
+      "blocks": [
+        {"type": "code", "lang": "bash", "text": "# Seznam snapshotů\nsudo snapper -c root list\n\n# Vytvořit snapshot\nsudo snapper -c root create --description \"Popis\" --print-number\n\n# Diff mezi snapshoty\nsudo snapper -c root status ČÍSLO1..ČÍSLO2\n\n# Rollback\nsudo snapper -c root rollback ČÍSLO\nsudo reboot\n\n# Smazat snapshot\nsudo snapper -c root delete ČÍSLO\n\n# Konfigurace\nsudo snapper -c root get-config"}
+      ]
+    },
+    {
+      "id": "cli-borg",
+      "title": "CLI: Borg",
+      "icon": "⌨️",
+      "blocks": [
+        {"type": "code", "lang": "bash", "text": "export BORG_PASSCOMMAND=\"cat ~/.borg-passphrase\"\n\n# Seznam archivů\nborg list /mnt/fedora-backups/borg-repo\n\n# Info o repu\nborg info /mnt/fedora-backups/borg-repo\n\n# Vytvořit backup\nborg create --compression zstd --one-file-system \\\n  /mnt/fedora-backups/borg-repo::nazev-DATUM \\\n  /home/geo \\\n  --exclude '*.cache*' --exclude 'thinclient_drives'\n\n# Procházet archiv\nborg list /mnt/fedora-backups/borg-repo::ARCHIV\n\n# Obnovit do /tmp\ncd /tmp && borg extract /mnt/fedora-backups/borg-repo::ARCHIV\n\n# Mountnout jako FS\nborg mount /mnt/fedora-backups/borg-repo::ARCHIV /mnt/borg-mount\n\n# Kontrola integrity\nborg check /mnt/fedora-backups/borg-repo\n\n# Compact (uvolnit místo po smazání archivů)\nborg compact /mnt/fedora-backups/borg-repo"}
+      ]
+    },
+    {
+      "id": "cli-sync",
+      "title": "CLI: Btrfs Sync",
+      "icon": "⌨️",
+      "blocks": [
+        {"type": "code", "lang": "bash", "text": "# Ruční spuštění\nsudo systemctl start snapshot-sync.service\n\n# Log\nsudo cat /var/log/backup-snapshot-sync.log\n\n# Stav timeru\nsystemctl status snapshot-sync.timer"}
+      ]
+    },
+    {
+      "id": "smazany-soubor",
+      "title": "Scénář: Smazaný soubor",
+      "icon": "🔥",
+      "blocks": [
+        {"type": "heading", "text": "Systémový soubor (konfigurace, binárka)"},
+        {"type": "card", "title": "Ze Snapper snapshotu",
+          "code": "sudo ls /.snapshots/ČÍSLO/snapshot/cesta/\nsudo cp /.snapshots/ČÍSLO/snapshot/etc/soubor /etc/soubor"
+        },
+        {"type": "heading", "text": "Home soubor"},
+        {"type": "card", "title": "Z Borg archivu",
+          "code": "export BORG_PASSCOMMAND=\"cat ~/.borg-passphrase\"\ncd /tmp\nborg extract /mnt/fedora-backups/borg-repo::ARCHIV home/geo/soubor"
+        },
+        {"type": "text", "text": "Nebo přes Dashboard → Borg → ♻️ Restore"}
+      ]
+    },
+    {
+      "id": "rozbity-update",
+      "title": "Scénář: Rozbitý update",
+      "icon": "🔥",
+      "blocks": [
+        {"type": "heading", "text": "Systém bootuje"},
+        {"type": "card", "title": "Systém bootuje — rollback přes CLI",
+          "code": "sudo snapper -c root list          # najít pre-dnf snapshot\nsudo snapper -c root rollback ČÍSLO\nsudo reboot"
+        },
+        {"type": "heading", "text": "Systém NEBOOTUJE"},
+        {"type": "card", "title": "Systém nebootuje — GRUB recovery",
+          "entries": [
+            "GRUB → <strong>Fedora Snapshots</strong> → vyber snapshot → boot",
+            "Po nabootování: <code>sudo snapper -c root rollback ČÍSLO &amp;&amp; sudo reboot</code>"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mrtvy-disk",
+      "title": "Scénář: Mrtvý systémový disk",
+      "icon": "🔥",
+      "blocks": [
+        {"type": "card", "variant": "danger", "title": "Kompletní obnova z backup disku",
+          "code": "# 1. Boot z Live USB\n# 2. Připrav nový disk\nmkfs.btrfs -L fedora /dev/NEW_DISK\nmount /dev/NEW_DISK /mnt/new\nmount /dev/nvme0n1p1 /mnt/backup\n\n# 3. Obnov systém ze snapshotu\nls /mnt/backup/system-snapshots/\nbtrfs send /mnt/backup/system-snapshots/SNAPSHOT | btrfs receive /mnt/new/\nmv /mnt/new/SNAPSHOT /mnt/new/root\nbtrfs subvolume set-default /mnt/new/root\n\n# 4. Reinstall GRUB + oprav fstab\n# 5. Reboot\n\n# 6. Obnov /home\nexport BORG_PASSCOMMAND=\"cat /cesta/k/passphrase\"\ncd / && borg extract /mnt/backup/borg-repo::ARCHIV"
+        }
+      ]
+    },
+    {
+      "id": "ransomware",
+      "title": "Scénář: Ransomware",
+      "icon": "🔥",
+      "blocks": [
+        {"type": "card", "title": "Postup obnovy po ransomware útoku",
+          "code": "# 1. ODPOJ počítač od sítě OKAMŽITĚ\n# 2. Boot z Live USB\n\n# 3. Obnov systém ze snapshotu PŘED útokem\nsudo snapper -c root rollback ČÍSLO\n\n# 4. Obnov home z Borg archivu PŘED útokem\nexport BORG_PASSCOMMAND=\"cat ~/.borg-passphrase\"\nborg list /mnt/fedora-backups/borg-repo    # najdi archiv PŘED datem útoku\ncd / && borg extract /mnt/fedora-backups/borg-repo::ARCHIV"
+        }
+      ]
+    },
+    {
+      "id": "factory-reset",
+      "title": "Scénář: Factory reset",
+      "icon": "🔥",
+      "blocks": [
+        {"type": "card", "variant": "success", "title": "Návrat na GOLDEN snapshot",
+          "code": "sudo snapper -c root list     # najdi GOLDEN snapshot\nsudo snapper -c root rollback ČÍSLO_GOLDEN\nsudo reboot"
+        },
+        {"type": "text", "text": "Nebo přes Dashboard → klikni ⏪ u GOLDEN snapshotu"}
+      ]
+    },
+    {
+      "id": "automaticke",
+      "title": "Automatické úlohy",
+      "icon": "⏰",
+      "blocks": [
+        {"type": "table",
+          "headers": ["Timer", "Kdy", "Co dělá"],
+          "rows": [
+            ["<code>snapper-timeline.timer</code>", "Každou hodinu", "Vytvoří timeline snapshot"],
+            ["<code>snapper-cleanup.timer</code>", "Každou hodinu", "Smaže staré snapshoty dle retence"],
+            ["<code>borg-backup.timer</code>", "Denně ~03:13", "Borg backup /home/geo"],
+            ["<code>snapshot-sync.timer</code>", "Denně ~03:32", "Btrfs send/receive na backup disk"]
+          ]
+        },
+        {"type": "code", "lang": "bash", "text": "# Ověření stavu timerů\nsystemctl list-timers | grep -iE 'borg|snapshot|snapper'"}
+      ]
+    },
+    {
+      "id": "monitoring",
+      "title": "Monitoring",
+      "icon": "📊",
+      "blocks": [
+        {"type": "code", "lang": "bash", "text": "# Zdraví systému (JSON)\ncurl -s http://localhost:8090/api/health | python3 -m json.tool\n\n# Místo na discích\ndf -h / /mnt/fedora-backups\n\n# Je backup disk mounted?\nmountpoint /mnt/fedora-backups\n\n# Poslední borg backup\nexport BORG_PASSCOMMAND=\"cat ~/.borg-passphrase\"\nborg list /mnt/fedora-backups/borg-repo --last 1\n\n# Dashboard log\ntail -20 ~/projects/backup-dashboard/logs/dashboard.log\n\n# Systemd logy\nsudo journalctl -u borg-backup.service --since today\nsudo journalctl -u snapshot-sync.service --since today\nsudo journalctl -u backup-dashboard.service -n 20"}
+      ]
+    },
+    {
+      "id": "rizika",
+      "title": "Rizika a limity",
+      "icon": "⚠️",
+      "blocks": [
+        {"type": "card", "variant": "danger", "title": "🔑 Borg klíč a heslo",
+          "text": "Bez <code>~/.borg-passphrase</code> a <code>~/borg-key-backup.txt</code> jsou Borg zálohy <strong>NEČITELNÉ</strong>. Ulož kopie mimo tento počítač: USB disk, cloud, tisk na papír."
+        },
+        {"type": "card", "variant": "warning", "title": "🌐 Žádný offsite backup",
+          "text": "Obě zálohy (Snapper i Borg) jsou fyzicky na stejném místě. Krádež, požár nebo přepětí = ztráta všeho. Zvaž: BorgBase, rsync.net, druhý PC, NAS."
+        },
+        {"type": "card", "variant": "warning", "title": "💾 Backup disk musí být mounted",
+          "text": "Pokud <code>/mnt/fedora-backups</code> není připojen, Borg i Sync zálohy <strong>selžou tiše</strong>. Dashboard zobrazuje varování, ale automatické úlohy mohou selhat bez notifikace."
+        },
+        {"type": "card", "variant": "info", "title": "📏 Limity",
+          "entries": [
+            "Snapper snapshoty zabírají místo na root disku úměrně změnám — sleduj <code>df -h /</code>",
+            "Borg deduplikace šetří místo, ale repo roste s časem — pravidelně spouštěj <code>borg compact</code>",
+            "Dashboard běží jako root (nutné pro snapper/btrfs operace)",
+            "Restore z dashboardu zatím v development fázi"
+          ]
+        }
+      ]
+    }
+  ]
+}

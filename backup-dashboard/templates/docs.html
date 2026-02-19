@@ -1,929 +1,755 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📖 Backup Dashboard - Dokumentace</title>
-    <style>
-        :root {
-            --bg: #0d1117;
-            --bg2: #161b22;
-            --bg3: #21262d;
-            --border: #30363d;
-            --text: #e6edf3;
-            --text2: #8b949e;
-            --green: #3fb950;
-            --yellow: #d29922;
-            --red: #f85149;
-            --blue: #58a6ff;
-            --purple: #bc8cff;
-            --orange: #f0883e;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            line-height: 1.7;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📖 Fedora Backup Dashboard — Dokumentace</title>
+<style>
+:root {
+    --bg: #0d1117;
+    --bg2: #161b22;
+    --bg3: #21262d;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text2: #8b949e;
+    --green: #3fb950;
+    --yellow: #d29922;
+    --red: #f85149;
+    --blue: #58a6ff;
+    --purple: #bc8cff;
+    --orange: #f0883e;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+}
 
-        /* Navigation */
-        .top-bar {
-            background: var(--bg2);
-            border-bottom: 1px solid var(--border);
-            padding: 12px 24px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-        .top-bar-left {
-            display: flex;
-            gap: 20px;
-            align-items: center;
-        }
-        .btn-back {
-            background: var(--blue);
-            color: white !important;
-            padding: 8px 16px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 14px;
-            transition: all 0.2s;
-        }
-        .btn-back:hover {
-            opacity: 0.9;
-            transform: translateY(-1px);
-        }
+/* ── Top bar ── */
+.top-bar {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+.top-bar-title { font-size: 15px; font-weight: 600; }
+.top-bar-meta  { font-size: 12px; color: var(--text2); display: flex; align-items: center; gap: 10px; }
 
-        /* Live Status Badge */
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-            background: rgba(63, 185, 80, 0.15);
-            color: var(--green);
-            border: 1px solid rgba(63, 185, 80, 0.3);
-        }
-        .pulse {
-            width: 8px;
-            height: 8px;
-            background: var(--green);
-            border-radius: 50%;
-            animation: pulse 2s ease-in-out infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
-        }
+/* ── Layout ── */
+.layout {
+    display: flex;
+    max-width: 1400px;
+    margin: 0 auto;
+}
 
-        .layout {
-            display: flex;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
+/* ── Sidebar ── */
+.sidebar {
+    width: 260px;
+    min-width: 260px;
+    padding: 20px 16px;
+    border-right: 1px solid var(--border);
+    position: sticky;
+    top: 52px;
+    height: calc(100vh - 52px);
+    overflow-y: auto;
+}
+.sidebar h3 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text2);
+    margin: 16px 0 6px;
+    padding: 0 12px;
+}
+.sidebar a {
+    display: block;
+    padding: 5px 12px;
+    color: var(--text);
+    text-decoration: none;
+    font-size: 13px;
+    border-radius: 6px;
+    margin: 1px 0;
+    transition: background 0.1s;
+}
+.sidebar a:hover { background: var(--bg3); color: var(--blue); }
+.sidebar a.active { background: var(--bg3); color: var(--blue); }
 
-        /* Sidebar TOC */
-        .sidebar {
-            width: 280px;
-            min-width: 280px;
-            padding: 24px 16px;
-            border-right: 1px solid var(--border);
-            position: sticky;
-            top: 52px;
-            height: calc(100vh - 52px);
-            overflow-y: auto;
-        }
-        .sidebar h3 {
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--text2);
-            margin: 16px 0 8px;
-        }
-        .sidebar a {
-            display: block;
-            padding: 4px 12px;
-            color: var(--text);
-            text-decoration: none;
-            font-size: 14px;
-            border-radius: 6px;
-            margin: 2px 0;
-        }
-        .sidebar a:hover { background: var(--bg3); color: var(--blue); }
+/* ── Hlavní obsah ── */
+.content {
+    flex: 1;
+    padding: 32px 48px;
+    max-width: 900px;
+}
+h1 { font-size: 30px; margin-bottom: 6px; }
+h2 {
+    font-size: 21px;
+    margin: 48px 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    color: var(--blue);
+    scroll-margin-top: 64px;
+}
+h3 { font-size: 16px; margin: 24px 0 8px; color: var(--text); }
+p { margin-bottom: 12px; color: var(--text); }
+ul, ol { margin: 8px 0 16px 24px; }
+li { margin-bottom: 4px; }
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
 
-        /* Content */
-        .content {
-            flex: 1;
-            padding: 32px 48px;
-            max-width: 900px;
-        }
+code {
+    background: var(--bg3);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 13px;
+    color: var(--orange);
+}
+pre {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 12px 0 20px;
+    color: var(--text);
+}
 
-        h1 { font-size: 32px; margin-bottom: 8px; }
-        h2 {
-            font-size: 22px;
-            margin: 48px 0 16px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid var(--border);
-            color: var(--blue);
-        }
-        h3 { font-size: 17px; margin: 24px 0 8px; color: var(--text); }
-        p { margin-bottom: 12px; }
-        ul, ol { margin: 8px 0 16px 24px; }
-        li { margin-bottom: 6px; }
+/* ── Tabulky ── */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 20px;
+    font-size: 14px;
+}
+th, td {
+    padding: 9px 14px;
+    border: 1px solid var(--border);
+    text-align: left;
+}
+th { background: var(--bg3); font-weight: 600; color: var(--text2); }
+tr:hover td { background: var(--bg2); }
 
-        code {
-            background: var(--bg3);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'JetBrains Mono', 'Fira Code', monospace;
-            font-size: 13px;
-        }
-        pre {
-            background: var(--bg3);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 16px;
-            overflow-x: auto;
-            font-family: 'JetBrains Mono', 'Fira Code', monospace;
-            font-size: 13px;
-            line-height: 1.5;
-            margin: 12px 0 20px;
-        }
+/* ── Karty ── */
+.card-doc {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    margin: 14px 0;
+}
+.card-doc.warning { border-color: var(--yellow); background: #1c1500; }
+.card-doc.danger  { border-color: var(--red);    background: #1c0a0a; }
+.card-doc.info    { border-color: var(--blue);   background: #0a1929; }
+.card-doc.success { border-color: var(--green);  background: #0a1c0a; }
+.card-doc .card-title {
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+.card-doc p  { margin-bottom: 6px; }
+.card-doc ul { margin: 6px 0 6px 20px; }
+.card-doc pre {
+    margin: 10px 0 0;
+    background: var(--bg);
+    border-color: var(--border);
+}
 
-        .card-doc {
-            background: var(--bg2);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 20px;
-            margin: 16px 0;
-        }
-        .card-doc.warning {
-            border-color: var(--yellow);
-            background: #1c1500;
-        }
-        .card-doc.danger {
-            border-color: var(--red);
-            background: #1c0a0a;
-        }
-        .card-doc.info {
-            border-color: var(--blue);
-            background: #0a1929;
-        }
-        .card-doc.success {
-            border-color: var(--green);
-            background: #0a1c0a;
-        }
-        .card-doc .card-title {
-            font-weight: 600;
-            margin-bottom: 8px;
-            font-size: 15px;
-        }
+/* ── Badges ── */
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+}
+.badge-green  { background: #0d2818; color: var(--green); }
+.badge-yellow { background: #2a1e00; color: var(--yellow); }
+.badge-red    { background: #2d0a0a; color: var(--red); }
+.badge-blue   { background: #0c2d6b; color: var(--blue); }
+.badge-purple { background: #271052; color: var(--purple); }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 12px 0 20px;
-            font-size: 14px;
-        }
-        th, td {
-            padding: 10px 14px;
-            border: 1px solid var(--border);
-            text-align: left;
-        }
-        th { background: var(--bg3); font-weight: 600; }
+/* ── Meta řádek ── */
+.meta-row {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin: 6px 0 24px;
+    font-size: 13px;
+    color: var(--text2);
+}
 
-        .badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 600;
-        }
-        .badge-green { background: #0d2818; color: var(--green); }
-        .badge-yellow { background: #2a1e00; color: var(--yellow); }
-        .badge-red { background: #2d0a0a; color: var(--red); }
-        .badge-blue { background: #0c2d6b; color: var(--blue); }
-        .badge-purple { background: #271052; color: var(--purple); }
+/* ── Back link ── */
+.btn-back {
+    background: var(--blue);
+    color: white !important;
+    padding: 6px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 13px;
+}
+.btn-back:hover { opacity: 0.85; text-decoration: none; }
 
-        .schema {
-            background: var(--bg3);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 20px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 13px;
-            line-height: 1.6;
-            margin: 16px 0;
-            overflow-x: auto;
-        }
+/* ── Live Status Widget ── */
+.live-status {
+    background: linear-gradient(135deg, #0d1117 0%, #1a1e2e 100%);
+    border: 2px solid var(--green);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 24px 0;
+}
+.live-status h3 { color: var(--green); margin: 0 0 16px; display: flex; align-items: center; gap: 8px; }
+.live-status > p { color: var(--text2); margin-bottom: 16px; }
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+}
+.status-item { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+.status-item-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
+.status-item-value { font-size: 18px; font-weight: 600; margin-top: 4px; }
+.status-item-value.ok    { color: var(--green); }
+.status-item-value.warn  { color: var(--yellow); }
+.status-item-value.error { color: var(--red); }
+.pulse {
+    width: 8px; height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+    animation: pulse-anim 2s ease-in-out infinite;
+}
+@keyframes pulse-anim { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-        /* Live Status Section */
-        .live-status {
-            background: linear-gradient(135deg, #0d1117 0%, #1a1e2e 100%);
-            border: 2px solid var(--green);
-            border-radius: 12px;
-            padding: 24px;
-            margin: 24px 0;
-        }
-        .live-status h3 {
-            color: var(--green);
-            margin: 0 0 16px 0;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .status-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 12px;
-            margin-top: 12px;
-        }
-        .status-item {
-            background: var(--bg2);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 12px;
-        }
-        .status-item-label {
-            font-size: 11px;
-            color: var(--text2);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .status-item-value {
-            font-size: 18px;
-            font-weight: 600;
-            margin-top: 4px;
-        }
-        .status-item-value.ok { color: var(--green); }
-        .status-item-value.warn { color: var(--yellow); }
-        .status-item-value.error { color: var(--red); }
-
-        .copy-btn {
-            background: var(--purple);
-            color: white;
-            border: none;
-            padding: 6px 14px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 600;
-            margin-bottom: 12px;
-        }
-        .copy-btn:hover { opacity: 0.8; }
-
-        @media (max-width: 900px) {
-            .sidebar { display: none; }
-            .content { padding: 24px 16px; }
-        }
-    
-        /* Export a Print styly */
-        @media print {
-            * {
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
-            body {
-                background: white !important;
-                color: black !important;
-            }
-            .top-bar {
-                background: white !important;
-                border-bottom: 2px solid #333 !important;
-                color: black !important;
-                position: relative !important;
-            }
-            .sidebar {
-                display: none !important;
-            }
-            .layout {
-                display: block !important;
-            }
-            .content {
-                max-width: 100% !important;
-                padding: 20px !important;
-            }
-            .live-status {
-                background: #f0f9ff !important;
-                border: 2px solid #0066cc !important;
-                color: black !important;
-            }
-            .status-item {
-                background: white !important;
-                border: 1px solid #333 !important;
-            }
-            .status-item-label, .status-item-value {
-                color: black !important;
-            }
-            h1, h2, h3 {
-                color: #0066cc !important;
-                page-break-after: avoid !important;
-            }
-            .card-doc {
-                background: #f5f5f5 !important;
-                border: 1px solid #999 !important;
-                color: black !important;
-                page-break-inside: avoid !important;
-            }
-            .card-doc.warning {
-                background: #fff3cd !important;
-                border: 2px solid #ffc107 !important;
-            }
-            .card-doc.danger {
-                background: #f8d7da !important;
-                border: 2px solid #dc3545 !important;
-            }
-            .card-doc.info {
-                background: #d1ecf1 !important;
-                border: 2px solid #0dcaf0 !important;
-            }
-            .card-doc.success {
-                background: #d1e7dd !important;
-                border: 2px solid #198754 !important;
-            }
-            pre, code {
-                background: #f5f5f5 !important;
-                border: 1px solid #ccc !important;
-                color: black !important;
-            }
-            table {
-                border: 1px solid #333 !important;
-            }
-            th, td {
-                border: 1px solid #333 !important;
-                color: black !important;
-            }
-            th {
-                background: #e0e0e0 !important;
-            }
-            
-            /* Architektura diagram pro print/export */
-            #architektura + div {
-                background: white !important;
-                border: 2px solid #333 !important;
-            }
-            
-            /* FEDORA header */
-            #architektura + div > div:first-child > div {
-                background: linear-gradient(135deg, #2196F3 0%, #9C27B0 100%) !important;
-                color: white !important;
-            }
-            
-            /* Vrstva 1 - zelená */
-            #architektura + div div[style*="linear-gradient(135deg, #0d2818"] {
-                background: #e8f5e9 !important;
-                border: 3px solid #4CAF50 !important;
-            }
-            #architektura + div div[style*="linear-gradient(135deg, #0d2818"] div[style*="background: var(--green)"] {
-                background: #4CAF50 !important;
-                color: white !important;
-            }
-            
-            /* Vrstva 2 - žlutá */
-            #architektura + div div[style*="linear-gradient(135deg, #2a1e00"] {
-                background: #fff3e0 !important;
-                border: 3px solid #FF9800 !important;
-            }
-            #architektura + div div[style*="linear-gradient(135deg, #2a1e00"] div[style*="background: var(--yellow)"] {
-                background: #FF9800 !important;
-                color: white !important;
-            }
-            
-            /* Vrstva 3 - fialová */
-            #architektura + div div[style*="linear-gradient(135deg, #271052"] {
-                background: #f3e5f5 !important;
-                border: 3px solid #9C27B0 !important;
-            }
-            #architektura + div div[style*="linear-gradient(135deg, #271052"] div[style*="background: var(--purple)"] {
-                background: #9C27B0 !important;
-                color: white !important;
-            }
-            
-            /* Backup disk sekce */
-            #architektura + div div[style*="linear-gradient(135deg, var(--bg3)"] {
-                background: #e3f2fd !important;
-                border: 3px solid #2196F3 !important;
-            }
-            #architektura + div div[style*="background: var(--blue); color: white"] {
-                background: #2196F3 !important;
-                color: white !important;
-            }
-            
-            /* Dashboard sekce */
-            #architektura + div > div:last-child {
-                background: linear-gradient(135deg, #2196F3 0%, #1565C0 100%) !important;
-            }
-            
-            /* Badges */
-            .badge-green { background: #c8e6c9 !important; color: #2e7d32 !important; }
-            .badge-yellow { background: #fff9c4 !important; color: #f57f17 !important; }
-            .badge-red { background: #ffcdd2 !important; color: #c62828 !important; }
-            .badge-blue { background: #bbdefb !important; color: #1565c0 !important; }
-            .badge-purple { background: #e1bee7 !important; color: #6a1b9a !important; }
-        }
-        
-        @media print {
-            .btn-back {
-                display: none !important;
-            }
-            .status-badge {
-                display: none !important;
-            }
-        }
-        @media (max-width: 768px) {
-            }
-
-    </style>
+@media (max-width: 900px) {
+    .sidebar { display: none; }
+    .content { padding: 20px 16px; }
+}
+@media print {
+    .top-bar, .sidebar { display: none !important; }
+    .content { max-width: 100% !important; padding: 20px !important; }
+    .layout  { display: block !important; }
+    body     { background: white !important; color: black !important; }
+    h1, h2, h3 { color: #003080 !important; }
+    h2 { border-bottom: 1px solid #ccc !important; }
+    pre, code { background: #f5f5f5 !important; border: 1px solid #ccc !important; color: black !important; }
+    th  { background: #e8e8e8 !important; color: black !important; }
+    td  { color: black !important; }
+    .card-doc { background: #f9f9f9 !important; border: 1px solid #999 !important; color: black !important; }
+    .card-doc.warning { background: #fff9e6 !important; border-color: #cc9900 !important; }
+    .card-doc.danger  { background: #fff0f0 !important; border-color: #cc0000 !important; }
+    .card-doc.info    { background: #f0f4ff !important; border-color: #0033cc !important; }
+    .card-doc.success { background: #f0fff4 !important; border-color: #006600 !important; }
+    .badge-green  { background: #d4edda !important; color: #155724 !important; }
+    .badge-yellow { background: #fff3cd !important; color: #856404 !important; }
+    .badge-red    { background: #f8d7da !important; color: #721c24 !important; }
+    .badge-blue   { background: #d1ecf1 !important; color: #0c5460 !important; }
+}
+</style>
 </head>
 <body>
 
 <div class="top-bar">
-    <div class="top-bar-left">
-        <div>📖 <strong>Backup Dashboard Dokumentace</strong> &nbsp; v1.0</div>
-        <span class="status-badge">
-            <span class="pulse"></span>
-            Live Status
-        </span>
-    </div>
-    <div style="display: flex; gap: 12px; align-items: center;">
-        <button onclick="exportHTML()" style="padding: 8px 16px; background: var(--green); border: none; border-radius: 6px; color: white; font-weight: 600; font-size: 14px; cursor: pointer;">💾 Export HTML</button>
+    <div class="top-bar-title">
+        📖 Fedora Backup Dashboard <span style="font-weight:400;color:var(--text2)">v1.0.0</span>    </div>
+    <div class="top-bar-meta">
+        <span class="badge badge-green">active</span>
+        <span>Generováno 2026-02-19 20:56</span>
         <a href="/" class="btn-back">🏠 Zpět na Dashboard</a>
     </div>
 </div>
 
 <div class="layout">
 
-<!-- Sidebar -->
 <nav class="sidebar">
-    <h3>Rychlý přístup</h3>
-    <a href="/">🏠 Dashboard</a>
+    <h3>Kód</h3>
+    <a href="#moduly">📦 Moduly</a>
+    <h3>Dokumentace</h3>
     <a href="#live-status">📊 Live Status</a>
-    
-    <h3>Přehled</h3>
-    <a href="#architektura">Architektura</a>
-    <a href="#vrstvy">3 vrstvy záloh</a>
-    <a href="#soubory">Soubory a cesty</a>
-
-    <h3>Použití</h3>
-    <a href="#dashboard">Dashboard</a>
-    <a href="#rucni-snapshot">Ruční snapshot</a>
-    <a href="#rucni-borg">Ruční Borg backup</a>
-    <a href="#full-flow">Full Flow (3-v-1)</a>
-    <a href="#restore">Obnovení dat</a>
-    <a href="#rollback">Rollback systému</a>
-    <a href="#nuclear">Nuclear Delete</a>
-
-    <h3>CLI příkazy</h3>
-    <a href="#cli-snapper">Snapper</a>
-    <a href="#cli-borg">Borg</a>
-    <a href="#cli-sync">Btrfs Sync</a>
-
-    <h3>Scénáře obnovy</h3>
-    <a href="#smazany-soubor">Smazaný soubor</a>
-    <a href="#rozbity-update">Rozbitý update</a>
-    <a href="#mrtvy-disk">Mrtvý disk</a>
-    <a href="#ransomware">Ransomware</a>
-    <a href="#factory-reset">Factory reset</a>
-
-    <h3>Údržba</h3>
-    <a href="#automaticke">Automatické úlohy</a>
-    <a href="#monitoring">Monitoring</a>
-    <a href="#rizika">Rizika a limity</a>
-
+    <a href="#architektura">🗃️ Architektura</a>
+    <a href="#vrstvy">📚 3 vrstvy záloh</a>
+    <a href="#soubory">📁 Soubory a cesty</a>
+    <a href="#dashboard">🖥️ Dashboard</a>
+    <a href="#rucni-snapshot">📸 Ruční snapshot</a>
+    <a href="#rucni-borg">🔐 Ruční Borg backup</a>
+    <a href="#full-flow">🚀 Full Flow (3-v-1)</a>
+    <a href="#restore">♻️ Obnovení dat</a>
+    <a href="#rollback">⏪ Rollback systému</a>
+    <a href="#nuclear">☢️ Nuclear Delete</a>
+    <a href="#cli-snapper">⌨️ CLI: Snapper</a>
+    <a href="#cli-borg">⌨️ CLI: Borg</a>
+    <a href="#cli-sync">⌨️ CLI: Btrfs Sync</a>
+    <a href="#smazany-soubor">🔥 Scénář: Smazaný soubor</a>
+    <a href="#rozbity-update">🔥 Scénář: Rozbitý update</a>
+    <a href="#mrtvy-disk">🔥 Scénář: Mrtvý systémový disk</a>
+    <a href="#ransomware">🔥 Scénář: Ransomware</a>
+    <a href="#factory-reset">🔥 Scénář: Factory reset</a>
+    <a href="#automaticke">⏰ Automatické úlohy</a>
+    <a href="#monitoring">📊 Monitoring</a>
+    <a href="#rizika">⚠️ Rizika a limity</a>
 </nav>
 
-<!-- Content -->
 <main class="content">
 
-<h1>🛡️ Fedora Backup Dashboard</h1>
-<p style="color: var(--text2); font-size: 16px; margin-bottom: 32px;">
-    Kompletní dokumentace 3-vrstvého zálohovacího systému pro Fedora 43 Workstation
-</p>
+<h1>Fedora Backup Dashboard</h1>
 
-<!-- LIVE STATUS -->
-<div class="live-status" id="live-status">
-    <h3 style="display: flex; align-items: center; gap: 12px;">
+<p style="color:var(--text2);font-size:15px;margin-bottom:8px;">Kompletní dokumentace 3-vrstvého zálohovacího systému pro Fedora 43.</p>
+
+<div class="meta-row">
+<span>⚙️ python, fastapi, jinja2, uvicorn</span><span>🔌 port 8090</span><span>📅 aktualizováno 2026-02-19</span></div>
+
+<table>
+    <thead><tr><th>Síť</th><th>URL</th></tr></thead>
+    <tbody>
+    <tr><td>Lokální</td><td><code>http://localhost:8090</code></td></tr>
+    <tr><td>LAN</td><td><code>http://192.168.0.101:8090</code></td></tr>
+    <tr><td>Tailscale</td><td><code>http://fedora:8090</code></td></tr>
+    </tbody>
+</table>
+
+<h2 id="moduly">📦 Kódové moduly</h2>
+
+<table>
+    <thead><tr><th>Modul</th><th>Soubor</th><th>Účel</th><th>Status</th></tr></thead>
+    <tbody>
+    <tr>
+        <td><strong>helpers.py</strong></td>
+        <td><code>helpers.py</code></td>
+        <td>Sdílené utility: CONFIG, Jinja2 templates, logování, spouštění příkazů.</td>
+        <td>
+<span class="badge badge-green">stable</span>
+        </td>
+    </tr>
+    <tr>
+        <td><strong>routes/snapshots.py</strong></td>
+        <td><code>routes/snapshots.py</code></td>
+        <td>Snapper endpointy (create, delete, rollback, diff) a datová funkce get_snapper_list().</td>
+        <td>
+<span class="badge badge-green">stable</span>
+        </td>
+    </tr>
+    <tr>
+        <td><strong>routes/borg.py</strong></td>
+        <td><code>routes/borg.py</code></td>
+        <td>Borg Backup endpointy (create, delete, restore, files, tree) a datové funkce.</td>
+        <td>
+<span class="badge badge-green">stable</span>
+        </td>
+    </tr>
+    <tr>
+        <td><strong>routes/git.py</strong></td>
+        <td><code>routes/git.py</code></td>
+        <td>Git správa workspace přes web UI — log, diff, commit, rollback.</td>
+        <td>
+<span class="badge badge-green">stable</span>
+        </td>
+    </tr>
+    <tr>
+        <td><strong>routes/system.py</strong></td>
+        <td><code>routes/system.py</code></td>
+        <td>Hlavní dashboard endpointy: health, refresh, sync operace, logy, export, nuclear delete.</td>
+        <td>
+<span class="badge badge-green">stable</span>
+        </td>
+    </tr>
+    </tbody>
+</table>
+
+<h3>
+    helpers.py
+<span style="font-size:13px;font-weight:400;color:var(--text2)">— <code>helpers.py</code></span></h3>
+<p style="color:var(--text2);font-size:13px;">CONFIG dict obsahuje centrální konfiguraci: cesty k diskům, borg repo, excludes. templates = Jinja2Templates sdílená pro všechny routery.</p><table>
+    <thead><tr><th>Metoda</th><th>Parametry</th><th>Vrací</th><th>Popis</th></tr></thead>
+    <tbody>
+    <tr>
+        <td><code>log_action()</code></td>
+        <td><code style="font-size:12px;">message: str</code></td>
+        <td>None</td>
+        <td>Zapíše akci do aplikačního logu (logs/dashboard.log).</td>
+    </tr>
+    <tr>
+        <td><code>run_cmd()</code></td>
+        <td><code style="font-size:12px;">cmd: list[str]</code></td>
+        <td>str</td>
+        <td>Spustí příkaz, vrátí stdout. Vyvolá výjimku při chybě.</td>
+    </tr>
+    <tr>
+        <td><code>run_sudo()</code></td>
+        <td><code style="font-size:12px;">cmd: list[str]</code></td>
+        <td>str</td>
+        <td>Spustí příkaz přes sudo. Pro privilegované operace (snapper, btrfs).</td>
+    </tr>
+    <tr>
+        <td><code>get_borg_env()</code></td>
+        <td><code style="font-size:12px;">—</code></td>
+        <td>dict</td>
+        <td>Vrátí env dict s BORG_PASSCOMMAND pro autentizaci Borg.</td>
+    </tr>
+    </tbody>
+</table>
+<h3>
+    routes/snapshots.py
+<span style="font-size:13px;font-weight:400;color:var(--text2)">— <code>routes/snapshots.py</code></span></h3>
+<table>
+    <thead><tr><th>Metoda</th><th>Parametry</th><th>Vrací</th><th>Popis</th></tr></thead>
+    <tbody>
+    <tr>
+        <td><code>get_snapper_list()</code></td>
+        <td><code style="font-size:12px;">—</code></td>
+        <td>list[dict]</td>
+        <td>Vrátí seznam Snapper snapshotů. Importována a volána v routes/system.py pro dashboard.</td>
+    </tr>
+    </tbody>
+</table>
+<h3>
+    routes/borg.py
+<span style="font-size:13px;font-weight:400;color:var(--text2)">— <code>routes/borg.py</code></span></h3>
+<table>
+    <thead><tr><th>Metoda</th><th>Parametry</th><th>Vrací</th><th>Popis</th></tr></thead>
+    <tbody>
+    <tr>
+        <td><code>get_borg_archives()</code></td>
+        <td><code style="font-size:12px;">—</code></td>
+        <td>list[dict]</td>
+        <td>Vrátí seznam Borg archivů. Importována v routes/system.py.</td>
+    </tr>
+    <tr>
+        <td><code>get_borg_info()</code></td>
+        <td><code style="font-size:12px;">—</code></td>
+        <td>dict</td>
+        <td>Vrátí info o Borg repu (size, num_archives, last_modified).</td>
+    </tr>
+    </tbody>
+</table>
+<h3>
+    routes/git.py
+<span style="font-size:13px;font-weight:400;color:var(--text2)">— <code>routes/git.py</code></span></h3>
+<p style="color:var(--text2);font-size:13px;">Web UI dostupné na /git. Slouží pro commitování změn v ~/projects/ z prohlížeče.</p><table>
+    <thead><tr><th>Metoda</th><th>Parametry</th><th>Vrací</th><th>Popis</th></tr></thead>
+    <tbody>
+    <tr>
+        <td><code>get_git_log()</code></td>
+        <td><code style="font-size:12px;">—</code></td>
+        <td>list[dict]</td>
+        <td>Historie commitů (hash, zpráva, datum, autor).</td>
+    </tr>
+    <tr>
+        <td><code>get_git_status()</code></td>
+        <td><code style="font-size:12px;">—</code></td>
+        <td>dict</td>
+        <td>Aktuální git status — staged a unstaged soubory.</td>
+    </tr>
+    <tr>
+        <td><code>get_git_diff()</code></td>
+        <td><code style="font-size:12px;">commit: str</code></td>
+        <td>str</td>
+        <td>Textový diff konkrétního commitu.</td>
+    </tr>
+    </tbody>
+</table>
+<h3>
+    routes/system.py
+<span style="font-size:13px;font-weight:400;color:var(--text2)">— <code>routes/system.py</code></span></h3>
+<table>
+    <thead><tr><th>Metoda</th><th>Parametry</th><th>Vrací</th><th>Popis</th></tr></thead>
+    <tbody>
+    <tr>
+        <td><code>get_backup_disk_status()</code></td>
+        <td><code style="font-size:12px;">—</code></td>
+        <td>dict</td>
+        <td>Stav backup disku: mounted, used_percent, free, total.</td>
+    </tr>
+    <tr>
+        <td><code>get_root_disk_status()</code></td>
+        <td><code style="font-size:12px;">—</code></td>
+        <td>dict</td>
+        <td>Stav root disku: used_percent, free, total.</td>
+    </tr>
+    <tr>
+        <td><code>get_health_status()</code></td>
+        <td><code style="font-size:12px;">—</code></td>
+        <td>dict</td>
+        <td>Agregovaný health check: snapshots, borg, disky, timery. Vrací seznam warnings.</td>
+    </tr>
+    <tr>
+        <td><code>get_systemd_timers()</code></td>
+        <td><code style="font-size:12px;">—</code></td>
+        <td>list[dict]</td>
+        <td>Stav systemd timerů (borg-backup, snapshot-sync, snapper-timeline, snapper-cleanup).</td>
+    </tr>
+    <tr>
+        <td><code>get_sync_snapshots()</code></td>
+        <td><code style="font-size:12px;">—</code></td>
+        <td>list[dict]</td>
+        <td>Seznam snapshotů na backup disku (/mnt/fedora-backups/system-snapshots/).</td>
+    </tr>
+    <tr>
+        <td><code>get_dashboard_log()</code></td>
+        <td><code style="font-size:12px;">n: int = 100</code></td>
+        <td>list[str]</td>
+        <td>Posledních N řádků z logs/dashboard.log.</td>
+    </tr>
+    </tbody>
+</table>
+
+<h2 id="live-status">📊 Live Status</h2>
+
+
+<div class="live-status">
+    <h3>
         <span class="pulse"></span>
         Live Project Status
-        <button onclick="updateLiveStatus()" style="background: var(--bg3); border: 1px solid var(--border); color: var(--text1); padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 14px;" title="Aktualizovat status">🔄</button>
+        <button onclick="updateLiveStatus()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:13px;margin-left:8px;" title="Aktualizovat">🔄</button>
     </h3>
-    <p style="color: var(--text2); margin-bottom: 16px;">
-        Aktuální stav systému | Klikněte 🔄 pro aktualizaci
-    </p>
-    
+    <p>Aktuální stav systému &nbsp;|&nbsp; Klikněte 🔄 pro aktualizaci</p>
     <div class="status-grid">
-        <div class="status-item">
-            <div class="status-item-label">Dashboard</div>
-            <div class="status-item-value ok" id="status-dashboard">● Running</div>
-        </div>
-        <div class="status-item">
-            <div class="status-item-label">Snapper Snapshoty</div>
-            <div class="status-item-value" id="status-snapshots">—</div>
-        </div>
-        <div class="status-item">
-            <div class="status-item-label">Borg Archivy</div>
-            <div class="status-item-value" id="status-borg">—</div>
-        </div>
-        <div class="status-item">
-            <div class="status-item-label">Backup Disk</div>
-            <div class="status-item-value" id="status-disk">—</div>
-        </div>
-        <div class="status-item">
-            <div class="status-item-label">Root Disk</div>
-            <div class="status-item-value" id="status-root">—</div>
-        </div>
-        <div class="status-item">
-            <div class="status-item-label">Poslední Borg Backup</div>
-            <div class="status-item-value" id="status-last-borg">—</div>
-        </div>
-        <div class="status-item">
-            <div class="status-item-label">Poslední Sync</div>
-            <div class="status-item-value" id="status-last-sync">—</div>
-        </div>
-        <div class="status-item">
-            <div class="status-item-label">Health Status</div>
-            <div class="status-item-value" id="status-health">—</div>
-        </div>
+        <div class="status-item"><div class="status-item-label">Dashboard</div><div class="status-item-value ok" id="status-dashboard">● Running</div></div>
+        <div class="status-item"><div class="status-item-label">Snapper Snapshoty</div><div class="status-item-value" id="status-snapshots">—</div></div>
+        <div class="status-item"><div class="status-item-label">Borg Archivy</div><div class="status-item-value" id="status-borg">—</div></div>
+        <div class="status-item"><div class="status-item-label">Backup Disk</div><div class="status-item-value" id="status-disk">—</div></div>
+        <div class="status-item"><div class="status-item-label">Root Disk</div><div class="status-item-value" id="status-root">—</div></div>
+        <div class="status-item"><div class="status-item-label">Poslední Borg</div><div class="status-item-value" id="status-last-borg">—</div></div>
+        <div class="status-item"><div class="status-item-label">Poslední Sync</div><div class="status-item-value" id="status-last-sync">—</div></div>
+        <div class="status-item"><div class="status-item-label">Health Status</div><div class="status-item-value" id="status-health">—</div></div>
     </div>
-    
-    <div style="margin-top: 16px; font-size: 13px; color: var(--text2);">
+    <div style="margin-top:16px;font-size:13px;color:var(--text2);">
         <strong>Poslední update:</strong> <span id="status-timestamp">—</span>
     </div>
 </div>
-
 <script>
 async function updateLiveStatus() {
+    const set = (id, text, cls) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = text;
+        el.className = 'status-item-value' + (cls ? ' ' + cls : '');
+    };
     try {
-        const response = await fetch('/api/health');
-        const data = await response.json();
-        
-        // Snapshots
-        const snapshots = document.getElementById('status-snapshots');
-        if (data.snapshots && data.snapshots.count !== undefined) {
-            snapshots.textContent = data.snapshots.count;
-            snapshots.className = 'status-item-value ok';
-        }
-        
-        // Borg
-        const borg = document.getElementById('status-borg');
-        if (data.borg && data.borg.count !== undefined) {
-            borg.textContent = data.borg.count;
-            borg.className = 'status-item-value ok';
-        }
-        
-        // Backup disk
-        const disk = document.getElementById('status-disk');
+        const r = await fetch('/api/health');
+        const data = await r.json();
+        if (data.snapshots?.count !== undefined) set('status-snapshots', data.snapshots.count, 'ok');
+        if (data.borg?.count !== undefined) set('status-borg', data.borg.count, 'ok');
         if (data.backup_disk) {
-            if (data.backup_disk.mounted) {
-                disk.textContent = `${data.backup_disk.used_percent}% použito`;
-                disk.className = data.backup_disk.used_percent > 85 ? 'status-item-value warn' : 'status-item-value ok';
-            } else {
-                disk.textContent = '⚠ Unmounted';
-                disk.className = 'status-item-value error';
-            }
+            if (data.backup_disk.mounted)
+                set('status-disk', data.backup_disk.used_percent + '% použito', data.backup_disk.used_percent > 85 ? 'warn' : 'ok');
+            else
+                set('status-disk', '⚠ Unmounted', 'error');
         }
-        
-        // Root disk
-        const root = document.getElementById('status-root');
-        if (data.root_disk) {
-            root.textContent = `${data.root_disk.used_percent}% použito`;
-            root.className = data.root_disk.used_percent > 85 ? 'status-item-value warn' : 'status-item-value ok';
-        }
-        
-        // Last Borg
-        const lastBorg = document.getElementById('status-last-borg');
-        if (data.borg && data.borg.last_backup) {
-            lastBorg.textContent = data.borg.last_backup;
-            lastBorg.className = 'status-item-value ok';
-        }
-        
-        // Last Sync
-        const lastSync = document.getElementById('status-last-sync');
-        if (data.sync && data.sync.last_run) {
-            lastSync.textContent = data.sync.last_run;
-            lastSync.className = 'status-item-value ok';
-        }
-        
-        // Health
-        const health = document.getElementById('status-health');
-        if (data.warnings && data.warnings.length === 0) {
-            health.textContent = '✓ OK';
-            health.className = 'status-item-value ok';
-        } else if (data.warnings) {
-            health.textContent = `⚠ ${data.warnings.length} varování`;
-            health.className = 'status-item-value warn';
-        }
-        
-        // Timestamp
+        if (data.root_disk)
+            set('status-root', data.root_disk.used_percent + '% použito', data.root_disk.used_percent > 85 ? 'warn' : 'ok');
+        if (data.borg?.last_backup) set('status-last-borg', data.borg.last_backup, 'ok');
+        if (data.sync?.last_run) set('status-last-sync', data.sync.last_run, 'ok');
+        if (data.warnings !== undefined)
+            set('status-health', data.warnings.length === 0 ? '✓ OK' : '⚠ ' + data.warnings.length + ' varování', data.warnings.length === 0 ? 'ok' : 'warn');
         document.getElementById('status-timestamp').textContent = new Date().toLocaleString('cs-CZ');
-        
-    } catch (error) {
-        console.error('Failed to update live status:', error);
-        document.getElementById('status-dashboard').textContent = '⚠ Offline';
-        document.getElementById('status-dashboard').className = 'status-item-value error';
+    } catch(e) {
+        set('status-dashboard', '⚠ Offline', 'error');
     }
 }
-
-// Načtení při otevření stránky
 updateLiveStatus();
 </script>
 
-<!-- ===== ARCHITEKTURA ===== -->
 <h2 id="architektura">🗃️ Architektura</h2>
 
-<div style="background: var(--bg2); border: 2px solid var(--border); border-radius: 12px; padding: 32px; margin: 24px 0;">
-    
-    <!-- Header -->
-    <div style="text-align: center; margin-bottom: 32px;">
-        <div style="display: inline-block; background: linear-gradient(135deg, var(--blue) 0%, var(--purple) 100%); padding: 12px 24px; border-radius: 8px;">
-            <strong style="color: white; font-size: 18px;">FEDORA 43 WORKSTATION</strong>
-        </div>
-    </div>
 
-    <!-- 3 Vrstvy -->
-    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 32px;">
-        
-        <!-- Vrstva 1 -->
-        <div style="background: linear-gradient(135deg, #0d2818 0%, #1a3d2a 100%); border: 2px solid var(--green); border-radius: 10px; padding: 20px; text-align: center;">
-            <div style="background: var(--green); color: var(--bg); font-weight: bold; padding: 8px; border-radius: 6px; margin-bottom: 12px;">
-                VRSTVA 1
-            </div>
-            <div style="font-size: 20px; margin-bottom: 8px;">📸</div>
-            <div style="font-weight: 600; margin-bottom: 12px;">Snapper</div>
-            <div style="font-size: 13px; color: var(--text2); line-height: 1.6;">
-                Btrfs snapshoty<br>
-                <code style="font-size: 11px;">(root /)</code>
-            </div>
-            <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--green); font-size: 12px; color: var(--green);">
-                /.snapshots/
-            </div>
-        </div>
+<p>3-vrstvá zálohovací architektura: Snapper snapshoty (vrstva 1), Btrfs sync na záložní disk (vrstva 2) a Borg backup šifrovaných dat (vrstva 3). Vše ovládáno přes Dashboard na portu 8090.</p>
 
-        <!-- Vrstva 2 -->
-        <div style="background: linear-gradient(135deg, #2a1e00 0%, #3d2f00 100%); border: 2px solid var(--yellow); border-radius: 10px; padding: 20px; text-align: center;">
-            <div style="background: var(--yellow); color: var(--bg); font-weight: bold; padding: 8px; border-radius: 6px; margin-bottom: 12px;">
-                VRSTVA 2
-            </div>
-            <div style="font-size: 20px; margin-bottom: 8px;">🔄</div>
-            <div style="font-weight: 600; margin-bottom: 12px;">Btrfs Sync</div>
-            <div style="font-size: 13px; color: var(--text2); line-height: 1.6;">
-                send/receive<br>
-                <code style="font-size: 11px;">inkrementální</code>
-            </div>
-            <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--yellow); font-size: 12px; color: var(--yellow);">
-                /system-snapshots/
-            </div>
-        </div>
-
-        <!-- Vrstva 3 -->
-        <div style="background: linear-gradient(135deg, #271052 0%, #3a1a6b 100%); border: 2px solid var(--purple); border-radius: 10px; padding: 20px; text-align: center;">
-            <div style="background: var(--purple); color: var(--bg); font-weight: bold; padding: 8px; border-radius: 6px; margin-bottom: 12px;">
-                VRSTVA 3
-            </div>
-            <div style="font-size: 20px; margin-bottom: 8px;">🔐</div>
-            <div style="font-weight: 600; margin-bottom: 12px;">Borg Backup</div>
-            <div style="font-size: 13px; color: var(--text2); line-height: 1.6;">
-                šifrovaný, dedup<br>
-                <code style="font-size: 11px;">(/home/geo)</code>
-            </div>
-            <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--purple); font-size: 12px; color: var(--purple);">
-                /borg-repo/
-            </div>
-        </div>
-    </div>
-
-    <!-- Arrow down -->
-    <div style="text-align: center; margin: 20px 0; color: var(--text2); font-size: 24px;">
-        ↓
-    </div>
-
-    <!-- Backup Disk -->
-    <div style="background: linear-gradient(135deg, var(--bg3) 0%, var(--bg2) 100%); border: 2px solid var(--blue); border-radius: 10px; padding: 24px; text-align: center;">
-        <div style="display: inline-flex; align-items: center; gap: 12px; background: var(--blue); color: white; padding: 10px 20px; border-radius: 8px; margin-bottom: 12px;">
-            <span style="font-size: 24px;">💾</span>
-            <div style="text-align: left;">
-                <div style="font-weight: 600; font-size: 16px;">/mnt/fedora-backups</div>
-                <div style="font-size: 12px; opacity: 0.9;">nvme0n1p1 • 350GB</div>
-            </div>
-        </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; font-size: 13px;">
-            <div style="background: var(--bg); padding: 12px; border-radius: 6px; border: 1px solid var(--border);">
-                <div style="color: var(--yellow); font-weight: 600; margin-bottom: 4px;">📁 system-snapshots/</div>
-                <div style="color: var(--text2); font-size: 12px;">Btrfs snapshoty</div>
-            </div>
-            <div style="background: var(--bg); padding: 12px; border-radius: 6px; border: 1px solid var(--border);">
-                <div style="color: var(--purple); font-weight: 600; margin-bottom: 4px;">📁 borg-repo/</div>
-                <div style="color: var(--text2); font-size: 12px;">Borg archivy</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Arrow down -->
-    <div style="text-align: center; margin: 20px 0; color: var(--text2); font-size: 24px;">
-        ↓
-    </div>
-
-    <!-- Dashboard -->
-    <div style="background: linear-gradient(135deg, var(--blue) 0%, #0066cc 100%); border-radius: 10px; padding: 20px; text-align: center;">
-        <div style="display: inline-flex; align-items: center; gap: 12px; color: white;">
-            <span style="font-size: 28px;">🌐</span>
-            <div style="text-align: left;">
-                <div style="font-weight: 700; font-size: 18px;">Backup Dashboard</div>
-                <div style="font-size: 13px; opacity: 0.9;">FastAPI + Jinja2 | port 8090</div>
-                <div style="font-size: 12px; opacity: 0.8; margin-top: 4px;">Ovládá všechny 3 vrstvy</div>
-            </div>
-        </div>
-    </div>
-
-</div>
 
 <table>
     <thead>
-        <tr>
-            <th>Komponenta</th>
-            <th>Technologie</th>
-            <th>Co zálohuje</th>
-            <th>Kam</th>
-        </tr>
+    <tr><th>Komponenta</th><th>Technologie</th><th>Co zálohuje</th><th>Kam</th></tr>
     </thead>
     <tbody>
-        <tr>
-            <td><span class="badge badge-green">Vrstva 1</span> Snapper</td>
-            <td>Btrfs snapshoty</td>
-            <td>Celý root filesystem <code>/</code></td>
-            <td><code>/.snapshots/</code> (lokální)</td>
-        </tr>
-        <tr>
-            <td><span class="badge badge-yellow">Vrstva 2</span> Btrfs Sync</td>
-            <td>btrfs send/receive</td>
-            <td>Kopie snapshotů</td>
-            <td><code>/mnt/fedora-backups/system-snapshots/</code></td>
-        </tr>
-        <tr>
-            <td><span class="badge badge-purple">Vrstva 3</span> Borg</td>
-            <td>Borg Backup (šifrovaný)</td>
-            <td><code>/home/geo/</code></td>
-            <td><code>/mnt/fedora-backups/borg-repo/</code></td>
-        </tr>
+    <tr><td><span class="badge badge-green">Vrstva 1</span> Snapper</td><td>Btrfs snapshoty</td><td>Celý root filesystem <code>/</code></td><td><code>/.snapshots/</code> (lokální)</td></tr>
+    <tr><td><span class="badge badge-yellow">Vrstva 2</span> Btrfs Sync</td><td>btrfs send/receive</td><td>Kopie snapshotů z /.snapshots/</td><td><code>/mnt/fedora-backups/system-snapshots/</code></td></tr>
+    <tr><td><span class="badge badge-purple">Vrstva 3</span> Borg</td><td>Borg Backup (šifrovaný, dedup)</td><td><code>/home/geo/</code></td><td><code>/mnt/fedora-backups/borg-repo/</code></td></tr>
     </tbody>
 </table>
 
-
-<!-- ===== VRSTVY ===== -->
 <h2 id="vrstvy">📚 3 vrstvy záloh</h2>
 
+
 <h3>Vrstva 1: Snapper (Btrfs snapshoty)</h3>
+
+
 <div class="card-doc info">
     <div class="card-title">📸 Lokální snapshoty celého systému</div>
     <ul>
-        <li><strong>Co:</strong> Atomický snapshot Btrfs subvolumu <code>/</code></li>
-        <li><strong>Kdy automaticky:</strong> Každou hodinu (timeline), před/po DNF operacích</li>
-        <li><strong>Retence:</strong> 5 hodinových, 7 denních, 4 týdenních, 6 měsíčních, 2 ročních</li>
-        <li><strong>Rychlost:</strong> Okamžitý (< 1 sekunda)</li>
-        <li><strong>Rollback:</strong> <code>snapper rollback ČÍSLO</code> + reboot</li>
-        <li><strong>GOLDEN snapshot:</strong> Referenční čistý stav systému, chráněný před smazáním</li>
+<li><strong>Co:</strong> Atomický snapshot Btrfs subvolumu <code>/</code></li>
+<li><strong>Kdy automaticky:</strong> Každou hodinu (timeline), před/po DNF operacích</li>
+<li><strong>Retence:</strong> 5 hodinových, 7 denních, 4 týdenních, 6 měsíčních, 2 ročních</li>
+<li><strong>Rychlost:</strong> Okamžitý (&lt; 1 sekunda)</li>
+<li><strong>Rollback:</strong> <code>snapper rollback ČÍSLO</code> + reboot</li>
+<li><strong>GOLDEN snapshot:</strong> Referenční čistý stav systému, chráněný před smazáním</li>
     </ul>
 </div>
 
+
 <h3>Vrstva 2: Btrfs Send/Receive</h3>
+
+
 <div class="card-doc info">
     <div class="card-title">🔄 Sync snapshotů na záložní disk</div>
     <ul>
-        <li><strong>Co:</strong> Kopie snapshotů z <code>/.snapshots/</code> na <code>/mnt/fedora-backups/</code></li>
-        <li><strong>Kdy:</strong> Denně ve 03:32 (systemd timer)</li>
-        <li><strong>Účel:</strong> Záchrana při selhání systémového disku</li>
-        <li><strong>Typ:</strong> Inkrementální (pouze změny)</li>
+<li><strong>Co:</strong> Kopie snapshotů z <code>/.snapshots/</code> na <code>/mnt/fedora-backups/</code></li>
+<li><strong>Kdy:</strong> Denně ve 03:32 (systemd timer)</li>
+<li><strong>Účel:</strong> Záchrana při selhání systémového disku</li>
+<li><strong>Typ:</strong> Inkrementální (pouze změny)</li>
     </ul>
 </div>
 
+
 <h3>Vrstva 3: Borg Backup</h3>
+
+
 <div class="card-doc info">
     <div class="card-title">🔐 Šifrované zálohy /home</div>
     <ul>
-        <li><strong>Co:</strong> Celý <code>/home/geo/</code> (s excludes)</li>
-        <li><strong>Kdy:</strong> Denně ve 03:13 (systemd timer)</li>
-        <li><strong>Šifrování:</strong> Ano (passphrase v <code>~/.borg-passphrase</code>)</li>
-        <li><strong>Deduplikace:</strong> Ano (identické bloky se ukládají jen jednou)</li>
-        <li><strong>Komprese:</strong> zstd</li>
-        <li><strong>Browse:</strong> Možnost procházet soubory v archivu a obnovit jednotlivé soubory</li>
+<li><strong>Co:</strong> Celý <code>/home/geo/</code> (s excludes: cache, thinclient_drives)</li>
+<li><strong>Kdy:</strong> Denně ve 03:13 (systemd timer)</li>
+<li><strong>Šifrování:</strong> Ano (passphrase v <code>~/.borg-passphrase</code>)</li>
+<li><strong>Deduplikace:</strong> Ano (identické bloky uloženy jen jednou)</li>
+<li><strong>Komprese:</strong> zstd</li>
+<li><strong>Browse:</strong> Procházení souborů v archivu a obnovení jednotlivých souborů</li>
     </ul>
 </div>
 
-<!-- ===== SOUBORY ===== -->
 <h2 id="soubory">📁 Soubory a cesty</h2>
+
 
 <table>
     <thead>
-        <tr><th>Cesta</th><th>Popis</th></tr>
+    <tr><th>Cesta</th><th>Popis</th></tr>
     </thead>
     <tbody>
-        <tr><td><code>/opt/backup-dashboard/app.py</code></td><td>Hlavní aplikace dashboardu</td></tr>
-        <tr><td><code>/opt/backup-dashboard/templates/</code></td><td>HTML šablony</td></tr>
-        <tr><td><code>/opt/backup-dashboard/logs/dashboard.log</code></td><td>Log dashboardu</td></tr>
-        <tr><td><code>/etc/systemd/system/backup-dashboard.service</code></td><td>Systemd service</td></tr>
-        <tr><td><code>/.snapshots/</code></td><td>Snapper snapshoty (lokální)</td></tr>
-        <tr><td><code>/mnt/fedora-backups/borg-repo/</code></td><td>Borg repository</td></tr>
-        <tr><td><code>/mnt/fedora-backups/system-snapshots/</code></td><td>Sync snapshoty</td></tr>
-        <tr><td><code>/home/geo/.borg-passphrase</code></td><td>Borg heslo</td></tr>
-        <tr><td><code>/home/geo/borg-key-backup.txt</code></td><td>Exportovaný Borg klíč</td></tr>
+    <tr><td><code>~/projects/backup-dashboard/app.py</code></td><td>Hlavní aplikace dashboardu</td></tr>
+    <tr><td><code>~/projects/backup-dashboard/templates/</code></td><td>HTML šablony (Jinja2)</td></tr>
+    <tr><td><code>~/projects/backup-dashboard/logs/dashboard.log</code></td><td>Aplikační log</td></tr>
+    <tr><td><code>/etc/systemd/system/backup-dashboard.service</code></td><td>Systemd service (system)</td></tr>
+    <tr><td><code>/.snapshots/</code></td><td>Snapper snapshoty (lokální, na root disku)</td></tr>
+    <tr><td><code>/mnt/fedora-backups/borg-repo/</code></td><td>Borg repository (šifrovaná)</td></tr>
+    <tr><td><code>/mnt/fedora-backups/system-snapshots/</code></td><td>Sync snapshoty z Vrstva 2</td></tr>
+    <tr><td><code>~/.borg-passphrase</code></td><td>Borg heslo (chraň jako klíč!)</td></tr>
+    <tr><td><code>~/borg-key-backup.txt</code></td><td>Exportovaný Borg klíč (záloha)</td></tr>
     </tbody>
 </table>
 
-<!-- ===== DASHBOARD ===== -->
 <h2 id="dashboard">🖥️ Dashboard</h2>
+
+
 <p>Dashboard je dostupný na:</p>
+
+
 <ul>
-    <li>Lokálně: <code>http://localhost:8090/</code></li>
-    <li>Ze sítě: <code>http://192.168.0.101:8090/</code></li>
-    <li>Přes Tailscale: <code>http://[tailscale-ip]:8090/</code></li>
+<li>Lokálně: <code>http://localhost:8090/</code></li>
+<li>Ze sítě: <code>http://192.168.0.101:8090/</code></li>
+<li>Přes Tailscale: <code>http://fedora:8090/</code></li>
 </ul>
 
+
 <h3>Sekce dashboardu</h3>
+
+
 <table>
-    <thead><tr><th>Sekce</th><th>Funkce</th></tr></thead>
+    <thead>
+    <tr><th>Sekce</th><th>Funkce</th></tr>
+    </thead>
     <tbody>
-        <tr><td>💾 Disky</td><td>Stav root a backup disku, využití místa</td></tr>
-        <tr><td>⏰ Automatické úlohy</td><td>Stav systemd timerů, příští/poslední spuštění</td></tr>
-        <tr><td>📸 Snapper Snapshoty</td><td>Seznam, vytvoření, smazání, diff, rollback</td></tr>
-        <tr><td>🔐 Borg Archivy</td><td>Seznam, vytvoření, browse, restore, smazání</td></tr>
-        <tr><td>🔄 Btrfs Sync</td><td>Sync snapshotů na backup disk</td></tr>
-        <tr><td>🚀 Full Flow</td><td>Kompletní záloha (snapshot + borg + sync)</td></tr>
-        <tr><td>☢️ Nuclear Delete</td><td>Smazání všech záloh (chráněno heslem)</td></tr>
-        <tr><td>📋 Log</td><td>Historie akcí, export, smazání</td></tr>
+    <tr><td>💾 Disky</td><td>Stav root a backup disku, využití místa</td></tr>
+    <tr><td>⏰ Automatické úlohy</td><td>Stav systemd timerů, příští/poslední spuštění</td></tr>
+    <tr><td>📸 Snapper Snapshoty</td><td>Seznam, vytvoření, smazání, diff, rollback</td></tr>
+    <tr><td>🔐 Borg Archivy</td><td>Seznam, vytvoření, browse souborů, restore, smazání</td></tr>
+    <tr><td>🔄 Btrfs Sync</td><td>Ruční sync snapshotů na backup disk</td></tr>
+    <tr><td>🚀 Full Flow</td><td>Kompletní záloha v jednom kroku (snapshot + borg + sync)</td></tr>
+    <tr><td>☢️ Nuclear Delete</td><td>Smazání všech záloh (chráněno heslem + 2× potvrzením)</td></tr>
+    <tr><td>📋 Log</td><td>Historie akcí dashboardu, export, smazání</td></tr>
     </tbody>
 </table>
 
-<!-- ===== RUČNÍ SNAPSHOT ===== -->
 <h2 id="rucni-snapshot">📸 Ruční snapshot</h2>
+
+
 <ol>
-    <li>Otevři dashboard</li>
-    <li>V sekci <strong>Snapper Snapshoty</strong> zadej popis (např. "Před instalací NVIDIA")</li>
-    <li>Klikni <strong>+ Snapshot</strong></li>
-    <li>Snapshot se vytvoří okamžitě (< 1 s)</li>
+<li>Otevři dashboard</li>
+<li>V sekci <strong>Snapper Snapshoty</strong> zadej popis (např. "Před instalací NVIDIA")</li>
+<li>Klikni <strong>+ Snapshot</strong></li>
+<li>Snapshot se vytvoří okamžitě (&lt; 1 s)</li>
 </ol>
+
+
 <div class="card-doc success">
     <div class="card-title">💡 Tip</div>
-    Vždy dělej snapshot PŘED rizikovými operacemi: aktualizace kernelu, instalace ovladačů, změny konfigurace.
-</div>
+<p>Vždy dělej snapshot PŘED rizikovými operacemi: aktualizace kernelu, instalace ovladačů, změny konfigurace.</p></div>
 
-<!-- ===== RUČNÍ BORG ===== -->
 <h2 id="rucni-borg">🔐 Ruční Borg backup</h2>
+
+
 <ol>
-    <li>V sekci <strong>Borg Archivy</strong> zadej komentář</li>
-    <li>Klikni <strong>+ Backup</strong></li>
-    <li>Backup trvá podle velikosti dat (typicky 1-5 minut)</li>
-    <li>Název archivu: <code>[komentář-slug]-[YYYYMMDD-HHMMSS]</code></li>
+<li>V sekci <strong>Borg Archivy</strong> zadej komentář</li>
+<li>Klikni <strong>+ Backup</strong></li>
+<li>Backup trvá podle velikosti dat (typicky 1–5 minut)</li>
+<li>Název archivu: <code>[komentář-slug]-[YYYYMMDD-HHMMSS]</code></li>
 </ol>
 
-<!-- ===== FULL FLOW ===== -->
 <h2 id="full-flow">🚀 Full Flow (3-v-1)</h2>
+
+
 <p>Provede kompletní zálohu ve 3 krocích:</p>
+
+
 <ol>
-    <li><span class="badge badge-blue">Krok 1</span> Vytvoří Snapper snapshot (popis s prefixem [FULL])</li>
-    <li><span class="badge badge-purple">Krok 2</span> Spustí Borg backup celého /home</li>
-    <li><span class="badge badge-yellow">Krok 3</span> Sync snapshotů na backup disk</li>
+<li><span class="badge badge-blue">Krok 1</span> Vytvoří Snapper snapshot (popis s prefixem [FULL])</li>
+<li><span class="badge badge-purple">Krok 2</span> Spustí Borg backup celého /home</li>
+<li><span class="badge badge-yellow">Krok 3</span> Sync snapshotů na backup disk</li>
 </ol>
+
+
 <div class="card-doc warning">
     <div class="card-title">⏱️ Čas</div>
-    Full Flow trvá typicky 2-10 minut. Stránka se po dokončení automaticky refreshne.
-</div>
+<p>Full Flow trvá typicky 2–10 minut. Stránka se po dokončení automaticky refreshne.</p></div>
 
-<!-- ===== RESTORE ===== -->
 <h2 id="restore">♻️ Obnovení dat</h2>
 
+
 <h3>Ze Snapper snapshotu (systémové soubory)</h3>
-<pre>
-# Najdi snapshot
+
+
+<pre># Najdi snapshot
 sudo snapper -c root list
 
 # Procházej soubory
 ls /.snapshots/ČÍSLO/snapshot/cesta/k/souboru
 
 # Kopíruj zpět
-sudo cp /.snapshots/ČÍSLO/snapshot/etc/config.conf /etc/config.conf
-</pre>
+sudo cp /.snapshots/ČÍSLO/snapshot/etc/config.conf /etc/config.conf</pre>
 
-<h3>Z Borg archivu (home soubory)</h3>
-<p>V dashboardu:</p>
+
+<h3>Z Borg archivu (home soubory) — přes Dashboard</h3>
+
+
 <ol>
-    <li>Klikni ♻️ u archivu</li>
-    <li>Procházej adresářovou strukturu (klik na 📁 složky)</li>
-    <li>Vyber soubor/složku kliknutím na ☑️</li>
-    <li>Zvol režim: <strong>Do cílové složky</strong> (bezpečné) nebo <strong>Na původní místo</strong> (přepíše)</li>
-    <li>Klikni <strong>Obnovit</strong></li>
+<li>Klikni ♻️ u archivu v sekci Borg Archivy</li>
+<li>Procházej adresářovou strukturu (klik na 📁 složky)</li>
+<li>Vyber soubor/složku kliknutím na ☑️</li>
+<li>Zvol režim: <strong>Do cílové složky</strong> (bezpečné) nebo <strong>Na původní místo</strong> (přepíše)</li>
+<li>Klikni <strong>Obnovit</strong></li>
 </ol>
 
-<h3>Z CLI:</h3>
-<pre>
-export BORG_PASSCOMMAND="cat ~/.borg-passphrase"
+
+<h3>Z Borg archivu — přes CLI</h3>
+
+
+<pre>export BORG_PASSCOMMAND=&quot;cat ~/.borg-passphrase&quot;
 
 # Seznam archivů
 borg list /mnt/fedora-backups/borg-repo
@@ -934,58 +760,62 @@ borg extract /mnt/fedora-backups/borg-repo::ARCHIV home/geo/cesta/soubor
 
 # Obnovit vše
 cd /
-borg extract /mnt/fedora-backups/borg-repo::ARCHIV
-</pre>
+borg extract /mnt/fedora-backups/borg-repo::ARCHIV</pre>
 
-<!-- ===== ROLLBACK ===== -->
 <h2 id="rollback">⏪ Rollback systému</h2>
+
 
 <div class="card-doc danger">
     <div class="card-title">⚠️ Rollback vrátí CELÝ systém do stavu snapshotu</div>
-    <p>Všechny změny po snapshotu budou ztraceny. /home zůstane nedotčen (je na zvláštním subvolumu jen pokud je separátní).</p>
-</div>
+<p>Všechny změny po snapshotu budou ztraceny. /home zůstane nedotčen (je na zvláštním subvolumu jen pokud je separátní).</p></div>
 
-<h3>Z dashboardu:</h3>
+
+<h3>Z dashboardu</h3>
+
+
 <ol>
-    <li>Klikni ⏪ u snapshotu</li>
-    <li>Potvrď 2× bezpečnostní dialog</li>
-    <li><strong>RESTARTUJ systém</strong> (rollback se dokončí až po rebootu)</li>
+<li>Klikni ⏪ u snapshotu</li>
+<li>Potvrď 2× bezpečnostní dialog</li>
+<li><strong>RESTARTUJ systém</strong> — rollback se dokončí až po rebootu</li>
 </ol>
 
-<h3>Z CLI:</h3>
-<pre>
-sudo snapper -c root rollback ČÍSLO
-sudo reboot
-</pre>
 
-<h3>Z GRUBu (systém nebootuje):</h3>
+<h3>Z CLI</h3>
+
+
+<pre>sudo snapper -c root rollback ČÍSLO
+sudo reboot</pre>
+
+
+<h3>Z GRUBu (systém nebootuje)</h3>
+
+
 <ol>
-    <li>Při startu vyber <strong>Fedora Snapshots</strong> v GRUB menu</li>
-    <li>Vyber požadovaný snapshot</li>
-    <li>Po nabootování: <code>sudo snapper -c root rollback ČÍSLO && sudo reboot</code></li>
+<li>Při startu vyber <strong>Fedora Snapshots</strong> v GRUB menu</li>
+<li>Vyber požadovaný snapshot</li>
+<li>Po nabootování spusť: <code>sudo snapper -c root rollback ČÍSLO &amp;&amp; sudo reboot</code></li>
 </ol>
 
-<!-- ===== NUCLEAR ===== -->
 <h2 id="nuclear">☢️ Nuclear Delete</h2>
+
+
 <div class="card-doc danger">
     <div class="card-title">NEVRATNÉ smazání všech záloh</div>
-    <p>Smaže:</p>
-    <ul>
-        <li>Všechny Snapper snapshoty (kromě #0 current a GOLDEN)</li>
-        <li>Všechny Borg archivy</li>
-        <li>Všechny sync snapshoty z backup disku</li>
+<p>Chráněno: heslem + potvrzovacím textem <code>SMAZAT VSE</code> + 2× confirm dialog. Smaže:</p>    <ul>
+<li>Všechny Snapper snapshoty (kromě #0 current a GOLDEN)</li>
+<li>Všechny Borg archivy</li>
+<li>Všechny sync snapshoty z backup disku</li>
     </ul>
-    <p>Chráněno: heslem + potvrzovacím textem <code>SMAZAT VSE</code> + 2× confirm dialog</p>
 </div>
 
-<!-- ===== CLI ===== -->
 <h2 id="cli-snapper">⌨️ CLI: Snapper</h2>
-<pre>
-# Seznam snapshotů
+
+
+<pre># Seznam snapshotů
 sudo snapper -c root list
 
 # Vytvořit snapshot
-sudo snapper -c root create --description "Popis" --print-number
+sudo snapper -c root create --description &quot;Popis&quot; --print-number
 
 # Diff mezi snapshoty
 sudo snapper -c root status ČÍSLO1..ČÍSLO2
@@ -998,12 +828,12 @@ sudo reboot
 sudo snapper -c root delete ČÍSLO
 
 # Konfigurace
-sudo snapper -c root get-config
-</pre>
+sudo snapper -c root get-config</pre>
 
 <h2 id="cli-borg">⌨️ CLI: Borg</h2>
-<pre>
-export BORG_PASSCOMMAND="cat ~/.borg-passphrase"
+
+
+<pre>export BORG_PASSCOMMAND=&quot;cat ~/.borg-passphrase&quot;
 
 # Seznam archivů
 borg list /mnt/fedora-backups/borg-repo
@@ -1013,15 +843,15 @@ borg info /mnt/fedora-backups/borg-repo
 
 # Vytvořit backup
 borg create --compression zstd --one-file-system \
-  /mnt/fedora-backups/borg-repo::nazev-$(date +%Y%m%d-%H%M%S) \
+  /mnt/fedora-backups/borg-repo::nazev-DATUM \
   /home/geo \
-  --exclude '*.cache*' --exclude 'thinclient_drives'
+  --exclude &#x27;*.cache*&#x27; --exclude &#x27;thinclient_drives&#x27;
 
 # Procházet archiv
 borg list /mnt/fedora-backups/borg-repo::ARCHIV
 
-# Obnovit
-cd /tmp && borg extract /mnt/fedora-backups/borg-repo::ARCHIV
+# Obnovit do /tmp
+cd /tmp &amp;&amp; borg extract /mnt/fedora-backups/borg-repo::ARCHIV
 
 # Mountnout jako FS
 borg mount /mnt/fedora-backups/borg-repo::ARCHIV /mnt/borg-mount
@@ -1029,63 +859,81 @@ borg mount /mnt/fedora-backups/borg-repo::ARCHIV /mnt/borg-mount
 # Kontrola integrity
 borg check /mnt/fedora-backups/borg-repo
 
-# Compact (uvolnit místo po smazání)
-borg compact /mnt/fedora-backups/borg-repo
-</pre>
+# Compact (uvolnit místo po smazání archivů)
+borg compact /mnt/fedora-backups/borg-repo</pre>
 
 <h2 id="cli-sync">⌨️ CLI: Btrfs Sync</h2>
-<pre>
-# Ruční spuštění
+
+
+<pre># Ruční spuštění
 sudo systemctl start snapshot-sync.service
 
 # Log
 sudo cat /var/log/backup-snapshot-sync.log
 
 # Stav timeru
-systemctl status snapshot-sync.timer
-</pre>
+systemctl status snapshot-sync.timer</pre>
 
-<!-- ===== SCÉNÁŘE ===== -->
 <h2 id="smazany-soubor">🔥 Scénář: Smazaný soubor</h2>
-<div class="card-doc">
-    <div class="card-title">Systémový soubor (konfigurace, binárka)</div>
-    <pre>sudo ls /.snapshots/ČÍSLO/snapshot/cesta/
-sudo cp /.snapshots/ČÍSLO/snapshot/etc/soubor /etc/soubor</pre>
-</div>
-<div class="card-doc">
-    <div class="card-title">Home soubor</div>
-    <pre>export BORG_PASSCOMMAND="cat ~/.borg-passphrase"
+
+
+<h3>Systémový soubor (konfigurace, binárka)</h3>
+
+
+<div class="card-doc ">
+    <div class="card-title">Ze Snapper snapshotu</div>
+<pre>sudo ls /.snapshots/ČÍSLO/snapshot/cesta/
+sudo cp /.snapshots/ČÍSLO/snapshot/etc/soubor /etc/soubor</pre></div>
+
+
+<h3>Home soubor</h3>
+
+
+<div class="card-doc ">
+    <div class="card-title">Z Borg archivu</div>
+<pre>export BORG_PASSCOMMAND=&quot;cat ~/.borg-passphrase&quot;
 cd /tmp
-borg extract /mnt/fedora-backups/borg-repo::ARCHIV home/geo/soubor</pre>
-    <p>Nebo přes Dashboard → Borg → ♻️ Restore</p>
-</div>
+borg extract /mnt/fedora-backups/borg-repo::ARCHIV home/geo/soubor</pre></div>
+
+
+<p>Nebo přes Dashboard → Borg → ♻️ Restore</p>
 
 <h2 id="rozbity-update">🔥 Scénář: Rozbitý update</h2>
-<div class="card-doc">
-    <div class="card-title">Systém bootuje</div>
-    <pre>sudo snapper -c root list          # najít pre-dnf snapshot
+
+
+<h3>Systém bootuje</h3>
+
+
+<div class="card-doc ">
+    <div class="card-title">Systém bootuje — rollback přes CLI</div>
+<pre>sudo snapper -c root list          # najít pre-dnf snapshot
 sudo snapper -c root rollback ČÍSLO
-sudo reboot</pre>
-</div>
-<div class="card-doc">
-    <div class="card-title">Systém NEBOOTUJE</div>
-    <ol>
-        <li>GRUB → <strong>Fedora Snapshots</strong> → vyber snapshot → boot</li>
-        <li><code>sudo snapper -c root rollback ČÍSLO && sudo reboot</code></li>
-    </ol>
+sudo reboot</pre></div>
+
+
+<h3>Systém NEBOOTUJE</h3>
+
+
+<div class="card-doc ">
+    <div class="card-title">Systém nebootuje — GRUB recovery</div>
+    <ul>
+<li>GRUB → <strong>Fedora Snapshots</strong> → vyber snapshot → boot</li>
+<li>Po nabootování: <code>sudo snapper -c root rollback ČÍSLO &amp;&amp; sudo reboot</code></li>
+    </ul>
 </div>
 
 <h2 id="mrtvy-disk">🔥 Scénář: Mrtvý systémový disk</h2>
+
+
 <div class="card-doc danger">
     <div class="card-title">Kompletní obnova z backup disku</div>
-    <pre>
-# 1. Boot z Live USB
+<pre># 1. Boot z Live USB
 # 2. Připrav nový disk
 mkfs.btrfs -L fedora /dev/NEW_DISK
 mount /dev/NEW_DISK /mnt/new
 mount /dev/nvme0n1p1 /mnt/backup
 
-# 3. Obnov systém
+# 3. Obnov systém ze snapshotu
 ls /mnt/backup/system-snapshots/
 btrfs send /mnt/backup/system-snapshots/SNAPSHOT | btrfs receive /mnt/new/
 mv /mnt/new/SNAPSHOT /mnt/new/root
@@ -1095,54 +943,60 @@ btrfs subvolume set-default /mnt/new/root
 # 5. Reboot
 
 # 6. Obnov /home
-export BORG_PASSCOMMAND="cat /cesta/k/passphrase"
-cd / && borg extract /mnt/backup/borg-repo::ARCHIV</pre>
-</div>
+export BORG_PASSCOMMAND=&quot;cat /cesta/k/passphrase&quot;
+cd / &amp;&amp; borg extract /mnt/backup/borg-repo::ARCHIV</pre></div>
 
 <h2 id="ransomware">🔥 Scénář: Ransomware</h2>
-<div class="card-doc">
-    <pre>
-# 1. ODPOJ počítač od sítě
+
+
+<div class="card-doc ">
+    <div class="card-title">Postup obnovy po ransomware útoku</div>
+<pre># 1. ODPOJ počítač od sítě OKAMŽITĚ
 # 2. Boot z Live USB
 
-# 3. Obnov systém ze snapshotu před útokem
+# 3. Obnov systém ze snapshotu PŘED útokem
 sudo snapper -c root rollback ČÍSLO
 
-# 4. Obnov home z Borg archivu před útokem
-export BORG_PASSCOMMAND="cat ~/.borg-passphrase"
-borg list /mnt/fedora-backups/borg-repo        # najdi archiv PŘED útokem
-cd / && borg extract /mnt/fedora-backups/borg-repo::ARCHIV</pre>
-</div>
+# 4. Obnov home z Borg archivu PŘED útokem
+export BORG_PASSCOMMAND=&quot;cat ~/.borg-passphrase&quot;
+borg list /mnt/fedora-backups/borg-repo    # najdi archiv PŘED datem útoku
+cd / &amp;&amp; borg extract /mnt/fedora-backups/borg-repo::ARCHIV</pre></div>
 
 <h2 id="factory-reset">🔥 Scénář: Factory reset</h2>
+
+
 <div class="card-doc success">
     <div class="card-title">Návrat na GOLDEN snapshot</div>
-    <pre>sudo snapper -c root list     # najdi GOLDEN snapshot
+<pre>sudo snapper -c root list     # najdi GOLDEN snapshot
 sudo snapper -c root rollback ČÍSLO_GOLDEN
-sudo reboot</pre>
-    <p>Nebo přes Dashboard → klikni ⏪ u GOLDEN snapshotu</p>
-</div>
+sudo reboot</pre></div>
 
-<!-- ===== AUTOMATICKÉ ÚLOHY ===== -->
+
+<p>Nebo přes Dashboard → klikni ⏪ u GOLDEN snapshotu</p>
+
 <h2 id="automaticke">⏰ Automatické úlohy</h2>
+
+
 <table>
-    <thead><tr><th>Timer</th><th>Kdy</th><th>Co dělá</th></tr></thead>
+    <thead>
+    <tr><th>Timer</th><th>Kdy</th><th>Co dělá</th></tr>
+    </thead>
     <tbody>
-        <tr><td><code>snapper-timeline.timer</code></td><td>Každou hodinu</td><td>Vytvoří timeline snapshot</td></tr>
-        <tr><td><code>snapper-cleanup.timer</code></td><td>Každou hodinu</td><td>Smaže staré snapshoty dle retence</td></tr>
-        <tr><td><code>borg-backup.timer</code></td><td>Denně ~03:13</td><td>Borg backup /home/geo</td></tr>
-        <tr><td><code>snapshot-sync.timer</code></td><td>Denně ~03:32</td><td>Btrfs send/receive na backup disk</td></tr>
+    <tr><td><code>snapper-timeline.timer</code></td><td>Každou hodinu</td><td>Vytvoří timeline snapshot</td></tr>
+    <tr><td><code>snapper-cleanup.timer</code></td><td>Každou hodinu</td><td>Smaže staré snapshoty dle retence</td></tr>
+    <tr><td><code>borg-backup.timer</code></td><td>Denně ~03:13</td><td>Borg backup /home/geo</td></tr>
+    <tr><td><code>snapshot-sync.timer</code></td><td>Denně ~03:32</td><td>Btrfs send/receive na backup disk</td></tr>
     </tbody>
 </table>
-<pre>
-# Ověření stavu timerů
-systemctl list-timers | grep -iE "borg|snapshot|snapper"
-</pre>
 
-<!-- ===== MONITORING ===== -->
+
+<pre># Ověření stavu timerů
+systemctl list-timers | grep -iE &#x27;borg|snapshot|snapper&#x27;</pre>
+
 <h2 id="monitoring">📊 Monitoring</h2>
-<pre>
-# Zdraví systému
+
+
+<pre># Zdraví systému (JSON)
 curl -s http://localhost:8090/api/health | python3 -m json.tool
 
 # Místo na discích
@@ -1152,114 +1006,65 @@ df -h / /mnt/fedora-backups
 mountpoint /mnt/fedora-backups
 
 # Poslední borg backup
-export BORG_PASSCOMMAND="cat ~/.borg-passphrase"
+export BORG_PASSCOMMAND=&quot;cat ~/.borg-passphrase&quot;
 borg list /mnt/fedora-backups/borg-repo --last 1
 
 # Dashboard log
-tail -20 /opt/backup-dashboard/logs/dashboard.log
+tail -20 ~/projects/backup-dashboard/logs/dashboard.log
 
 # Systemd logy
 sudo journalctl -u borg-backup.service --since today
 sudo journalctl -u snapshot-sync.service --since today
-sudo journalctl -u backup-dashboard.service -n 20
-</pre>
+sudo journalctl -u backup-dashboard.service -n 20</pre>
 
-<!-- ===== RIZIKA ===== -->
 <h2 id="rizika">⚠️ Rizika a limity</h2>
+
 
 <div class="card-doc danger">
     <div class="card-title">🔑 Borg klíč a heslo</div>
-    <p>Bez <code>~/.borg-passphrase</code> a <code>~/borg-key-backup.txt</code> jsou Borg zálohy <strong>NEČITELNÉ</strong>.</p>
-    <p>Ulož kopie mimo tento počítač: USB disk, cloud, tisk na papír.</p>
-</div>
+<p>Bez <code>~/.borg-passphrase</code> a <code>~/borg-key-backup.txt</code> jsou Borg zálohy <strong>NEČITELNÉ</strong>. Ulož kopie mimo tento počítač: USB disk, cloud, tisk na papír.</p></div>
+
 
 <div class="card-doc warning">
     <div class="card-title">🌐 Žádný offsite backup</div>
-    <p>Obě zálohy (Snapper i Borg) jsou na stejném PC. Krádež, požár nebo přepětí = ztráta všeho.</p>
-    <p>Zvaž: BorgBase, rsync.net, druhý PC, NAS.</p>
-</div>
+<p>Obě zálohy (Snapper i Borg) jsou fyzicky na stejném místě. Krádež, požár nebo přepětí = ztráta všeho. Zvaž: BorgBase, rsync.net, druhý PC, NAS.</p></div>
+
 
 <div class="card-doc warning">
     <div class="card-title">💾 Backup disk musí být mounted</div>
-    <p>Pokud <code>/mnt/fedora-backups</code> není připojen, Borg i Sync zálohy <strong>selžou tiše</strong>.</p>
-    <p>Dashboard zobrazuje varování, ale automatické úlohy mohou selhat.</p>
-</div>
+<p>Pokud <code>/mnt/fedora-backups</code> není připojen, Borg i Sync zálohy <strong>selžou tiše</strong>. Dashboard zobrazuje varování, ale automatické úlohy mohou selhat bez notifikace.</p></div>
+
 
 <div class="card-doc info">
     <div class="card-title">📏 Limity</div>
     <ul>
-        <li>Snapper snapshoty zabírají místo na root disku úměrně změnám</li>
-        <li>Borg deduplikace šetří místo, ale repo roste s časem</li>
-        <li>Dashboard běží jako root (nutné pro snapper/btrfs operace)</li>
-        <li>Restore z dashboardu zatím v development fázi</li>
+<li>Snapper snapshoty zabírají místo na root disku úměrně změnám — sleduj <code>df -h /</code></li>
+<li>Borg deduplikace šetří místo, ale repo roste s časem — pravidelně spouštěj <code>borg compact</code></li>
+<li>Dashboard běží jako root (nutné pro snapper/btrfs operace)</li>
+<li>Restore z dashboardu zatím v development fázi</li>
     </ul>
 </div>
 
-</main>
 
+</main>
 </div>
 
 <script>
-function exportHTML() {
-    let exportContent = document.documentElement.cloneNode(true);
-    let exportBar = exportContent.querySelector('.btn-export-html');
-    if (exportBar) exportBar.remove();
-    let backBtn = exportContent.querySelector('.btn-back');
-    if (backBtn) backBtn.remove();
+// Zvýraznění aktivní sekce v sidebar při scrollu
+const headings = document.querySelectorAll('h2[id]');
+const links    = document.querySelectorAll('.sidebar a');
 
-    const content = '<!DOCTYPE html>\n' + exportContent.outerHTML;
-    const blob = new Blob([content], { type: 'text/html;charset=utf-8' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    const date = new Date().toISOString().split('T')[0];
-    link.download = `fedora-backup-dokumentace-${date}.html`;
-    link.click();
-    showToast('HTML dokument stažen');
-}
+const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            links.forEach(l => l.classList.remove('active'));
+            const active = document.querySelector(`.sidebar a[href="#${entry.target.id}"]`);
+            if (active) active.classList.add('active');
+        }
+    });
+}, { threshold: 0.2, rootMargin: '-52px 0px -60% 0px' });
 
-function showToast(message) {
-    const toast = document.createElement('div');
-    toast.style.cssText = `
-        position: fixed;
-        bottom: 24px;
-        right: 24px;
-        background: var(--green);
-        color: white;
-        padding: 16px 24px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        z-index: 10000;
-        font-weight: 600;
-        animation: slideIn 0.3s ease-out;
-    `;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    setTimeout(() => {
-        toast.style.animation = 'slideOut 0.3s ease-out';
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
-}
-
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideIn {
-        from { transform: translateX(400px); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-    }
-    @keyframes slideOut {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(400px); opacity: 0; }
-    }
-    @media print {
-        .top-bar, .sidebar, .status-badge { display: none !important; }
-        .content { max-width: 100% !important; padding: 20px !important; }
-        .layout { display: block !important; }
-        body { background: white !important; color: black !important; }
-        h1, h2, h3 { color: #000 !important; }
-        .card-doc, .schema, pre { border: 1px solid #ccc !important; background: #f5f5f5 !important; }
-    }
-`;
-document.head.appendChild(style);
+headings.forEach(h => observer.observe(h));
 </script>
 
 </body>

@@ -1,0 +1,50 @@
+{
+  "services": [
+    {
+      "id": "backup-dashboard",
+      "name": "Backup Dashboard",
+      "description": "Snapper + Btrfs + Borg správa backupů",
+      "systemd": "backup-dashboard",
+      "user_service": false,
+      "port": 8090
+    },
+    {
+      "id": "web-edit",
+      "name": "Micro DMS",
+      "description": "MD Collaborative Editor — IC dokumentace",
+      "systemd": "mdserver",
+      "user_service": true,
+      "port": 8765,
+      "url_public": "https://fedora.tail41712d.ts.net/"
+    },
+    {
+      "id": "gitea",
+      "name": "Gitea",
+      "description": "Self-hosted Git server",
+      "systemd": "gitea",
+      "user_service": false,
+      "port": 3000
+    },
+    {
+      "id": "projects-dashboard",
+      "name": "Projects Dashboard",
+      "description": "Tento dashboard",
+      "systemd": "projects-dashboard",
+      "user_service": true,
+      "port": 8099
+    }
+  ],
+  "modes": [
+    {
+      "id": "remote",
+      "name": "Remote Mode",
+      "description": "Tailscale Funnel → fedora.tail41712d.ts.net"
+    },
+    {
+      "id": "gitea",
+      "name": "Gitea Online",
+      "description": "Git server dostupný lokálně",
+      "check_cmd": "systemctl is-active gitea"
+    }
+  ]
+}

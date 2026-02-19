@@ -1,0 +1,205 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Projektová dokumentace",
+  "description": "JSON Schema pro datové soubory generované AI. Soubory se ukládají do docs/data/{projekt}.json a renderují se přes Jinja2 bez účasti AI.",
+  "type": "object",
+  "required": ["project", "updated"],
+  "additionalProperties": false,
+  "properties": {
+    "project": {
+      "type": "string",
+      "description": "ID projektu — shodné s názvem adresáře v ~/projects/. Příklad: backup-dashboard"
+    },
+    "display_name": {
+      "type": "string",
+      "description": "Zobrazovaný název projektu. Příklad: Fedora Backup Dashboard"
+    },
+    "version": {
+      "type": "string",
+      "description": "Verze dokumentace. Příklad: 1.2.0"
+    },
+    "updated": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "description": "Datum poslední aktualizace ve formátu YYYY-MM-DD"
+    },
+    "description": {
+      "type": "string",
+      "description": "Krátký popis projektu (1-2 věty)"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "wip", "planned", "archived"],
+      "description": "Stav projektu"
+    },
+    "port": {
+      "type": ["integer", "null"],
+      "description": "Port na kterém běží služba, nebo null pokud není webová služba"
+    },
+    "tech": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Seznam technologií. Příklad: [python, fastapi, jinja2]"
+    },
+    "access": {
+      "type": "object",
+      "description": "Přístupové URL (jen pokud projekt má webový interface)",
+      "additionalProperties": false,
+      "properties": {
+        "local":     {"type": "string", "description": "Lokální URL, např. http://localhost:8090"},
+        "lan":       {"type": "string", "description": "LAN URL, např. http://192.168.0.101:8090"},
+        "tailscale": {"type": "string", "description": "Tailscale URL, např. http://fedora:8090"}
+      }
+    },
+    "back_link": {
+      "type": "object",
+      "description": "Volitelný odkaz zpět (zobrazuje se v top baru). Příklad: {'href': '/', 'label': '🏠 Zpět na Dashboard'}",
+      "additionalProperties": false,
+      "properties": {
+        "href":  {"type": "string", "description": "URL odkazu"},
+        "label": {"type": "string", "description": "Text odkazu"}
+      }
+    },
+    "modules": {
+      "type": "array",
+      "description": "Kódové moduly projektu. AI generuje záznam pro každý veřejný modul/třídu.",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "purpose", "status"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unikátní ID modulu (slug). Příklad: borg, helpers, routes-system"
+          },
+          "name": {
+            "type": "string",
+            "description": "Název souboru nebo třídy. Příklad: routes/borg.py"
+          },
+          "file": {
+            "type": "string",
+            "description": "Relativní cesta souboru od kořene projektu. Příklad: routes/borg.py"
+          },
+          "purpose": {
+            "type": "string",
+            "description": "Co modul dělá — stručně, 1 věta. Příklad: Borg Backup endpointy a operace s archivy."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["stable", "beta", "wip", "deprecated"],
+            "description": "Stabilita modulu"
+          },
+          "public_methods": {
+            "type": "array",
+            "description": "Veřejné metody/funkce (ne interní pomocné funkce s _ prefixem)",
+            "items": {
+              "type": "object",
+              "required": ["name", "description"],
+              "additionalProperties": false,
+              "properties": {
+                "name":        {"type": "string", "description": "Název metody/funkce bez závorek"},
+                "params":      {"type": "string", "description": "Parametry jako string. Příklad: path: Path, force: bool = False"},
+                "returns":     {"type": "string", "description": "Návratová hodnota. Příklad: list[dict]"},
+                "description": {"type": "string", "description": "Co metoda dělá — stručně"}
+              }
+            }
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Závislosti na jiných modulech ve stejném projektu. Příklad: [helpers.get_borg_env, routes.snapshots.get_snapper_list]"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Důležité poznámky, known issues, TODO. Nepatří sem: komentáře z kódu, historické poznámky."
+          }
+        }
+      }
+    },
+    "sections": {
+      "type": "array",
+      "description": "Dokumentační sekce stránky. Každá sekce se renderuje jako <h2> s obsahem.",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "blocks"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "HTML anchor ID sekce. Příklad: architektura, cli-snapper, rizika"
+          },
+          "title": {
+            "type": "string",
+            "description": "Nadpis sekce (bez ikony — ikona je separátní pole)"
+          },
+          "icon": {
+            "type": "string",
+            "description": "Emoji ikona před nadpisem. Příklad: 🗃️"
+          },
+          "blocks": {
+            "type": "array",
+            "description": "Obsahové bloky sekce. Každý blok má povinný field 'type'.",
+            "items": {
+              "type": "object",
+              "required": ["type"],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["text", "code", "table", "card", "list", "heading", "live_status"],
+                  "description": "Typ bloku: text=odstavec, code=kódový blok, table=tabulka, card=info/warn/danger karta, list=seznam, heading=podnadpis h3, live_status=živý status widget (volá API endpoint)"
+                },
+                "api_endpoint": {
+                  "type": "string",
+                  "description": "Pro type=live_status: URL API endpointu pro živý status. Příklad: /api/health"
+                },
+                "text": {
+                  "type": "string",
+                  "description": "Obsah bloku. Pro type=text: může obsahovat inline HTML (<code>, <strong>). Pro type=code: surový kód. Pro type=heading: text nadpisu."
+                },
+                "lang": {
+                  "type": "string",
+                  "description": "Jazyk pro code blok (jen pro zobrazení). Příklad: bash, python, sql"
+                },
+                "variant": {
+                  "type": "string",
+                  "enum": ["info", "warning", "danger", "success"],
+                  "description": "Pro type=card: vizuální styl karty. info=modra, warning=žlutá, danger=červená, success=zelená"
+                },
+                "title": {
+                  "type": "string",
+                  "description": "Pro type=card: nadpis karty. Příklad: ⚠️ Borg klíč a heslo"
+                },
+                "headers": {
+                  "type": "array",
+                  "items": {"type": "string"},
+                  "description": "Pro type=table: záhlaví sloupců"
+                },
+                "rows": {
+                  "type": "array",
+                  "items": {
+                    "type": "array",
+                    "items": {"type": "string"}
+                  },
+                  "description": "Pro type=table: řádky tabulky. Každý řádek je pole stringů (může obsahovat inline HTML)."
+                },
+                "entries": {
+                  "type": "array",
+                  "items": {"type": "string"},
+                  "description": "Pro type=list a type=card s položkami: seznam položek (může obsahovat inline HTML). POZOR: klíč je 'entries', nikoli 'items' (items je rezervované slovo Jinja2)."
+                },
+                "ordered": {
+                  "type": "boolean",
+                  "description": "Pro type=list: true = číslovaný seznam <ol>, false/vynecháno = odrážkový <ul>"
+                },
+                "code": {
+                  "type": "string",
+                  "description": "Pro type=card: volitelný kódový blok uvnitř karty"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

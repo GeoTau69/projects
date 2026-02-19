@@ -6,20 +6,32 @@
 
 - **Jazyk**: {language}
 - **Typ**: {type}
+- **Port**: {port}
+- **Služba**: `{systemd_service}`
 
-## Struktura projektu
+## Soubory
 
 ```
 (doplnit po implementaci)
 ```
 
-## Důležité příkazy
+## Příkazy
 
 ```bash
-(doplnit)
+# Spustit manuálně
+# python3 ...
+
+# Systemd
+systemctl --user status {systemd_service}
+systemctl --user restart {systemd_service}
+journalctl --user -u {systemd_service} -f
 ```
 
-## Konvence a pravidla
+## Architektura
+
+(doplnit — klíčové koncepty, datový tok, závislosti)
+
+## Konvence
 
 - Kód a komentáře psát **česky**
 - Soubory MUSÍ být v kódování **UTF-8**

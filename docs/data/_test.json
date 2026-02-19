@@ -1,0 +1,59 @@
+{
+  "project": "_test",
+  "display_name": "Test projektu",
+  "version": "0.1.0",
+  "updated": "2026-02-19",
+  "description": "Minimální testovací dokument pro ověření build pipeline.",
+  "status": "wip",
+  "port": 9999,
+  "tech": ["python", "jinja2"],
+  "access": {
+    "local": "http://localhost:9999",
+    "lan": "http://192.168.0.101:9999"
+  },
+  "modules": [
+    {
+      "id": "main",
+      "name": "main.py",
+      "file": "main.py",
+      "purpose": "Vstupní bod aplikace.",
+      "status": "stable",
+      "public_methods": [
+        {
+          "name": "run",
+          "params": "host: str = '0.0.0.0', port: int = 9999",
+          "returns": "None",
+          "description": "Spustí server."
+        }
+      ],
+      "dependencies": [],
+      "notes": "Testovací modul."
+    }
+  ],
+  "sections": [
+    {
+      "id": "prehled",
+      "title": "Přehled",
+      "icon": "📋",
+      "blocks": [
+        {"type": "text", "text": "Toto je testovací sekce pro ověření všech typů bloků."},
+        {"type": "heading", "text": "Typy bloků"},
+        {"type": "list", "ordered": false, "entries": ["text — odstavec", "code — kódový blok", "table — tabulka", "card — karta", "list — seznam"]},
+        {"type": "list", "ordered": true, "entries": ["Krok první", "Krok druhý", "Krok třetí"]},
+        {"type": "code", "lang": "bash", "text": "python build.py --project _test\npython build.py --check\npython build.py --force"},
+        {"type": "table",
+          "headers": ["Typ", "Popis"],
+          "rows": [
+            ["<code>text</code>", "Prostý odstavec textu"],
+            ["<code>code</code>", "Kódový blok s escapingem HTML"],
+            ["<code>card</code>", "Informační karta s variantou"]
+          ]
+        },
+        {"type": "card", "variant": "info", "title": "ℹ️ Info karta", "text": "Testovací info karta.", "entries": ["položka 1", "položka 2"]},
+        {"type": "card", "variant": "warning", "title": "⚠️ Varování", "text": "Toto je varování.", "code": "sudo rm -rf /proc/test  # jen test, obsah s < a > znaky"},
+        {"type": "card", "variant": "danger", "title": "❌ Nebezpečí", "text": "Nevratná operace bez entries."},
+        {"type": "card", "variant": "success", "title": "✅ Úspěch", "text": "Vše v pořádku."}
+      ]
+    }
+  ]
+}
