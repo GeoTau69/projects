@@ -195,27 +195,32 @@ Na základě `prompt_hash` z SQLite:
 
 ---
 
-### [4] VEKTOROVÁ DB — CHROMA
+### [4] VEKTOROVÁ DB — VLASTNÍ (SQLite + numpy)
 **Priorita: STŘEDNÍ**
-**Status: TODO**
+**Status: HOTOVO**
 
-**Use case:** sémantické hledání přes zdrojový kód (`.py`, `.java`, `.js`, `.ts`, `.sql`).
-CLAUDE.md = "co projekt dělá", Chroma = "kde v kódu je konkrétní logika".
+**Poznámka:** chromadb nekompatibilní s Python 3.14 (pydantic v1 crash) → vlastní implementace.
 
-**Embedding model:** `nomic-embed-text` přes Ollama (lokální, zdarma)
-**Uložení:** `~/.ai-agent/chroma/`
-**Re-indexace:** pouze změněné soubory přes `git diff`
+**Stack:** SQLite `~/.ai-agent/code_index.db` + numpy BLOB embeddingy + nomic-embed-text přes Ollama
+**Chunking:** Python → per funkce/třídy; Markdown → per sekce; ostatní → sliding window 60 řádků
+**Re-indexace:** mtime-based (skip beze-změny), `--diff` pro git-changed only
 
 ```bash
-agent search "retry logika" --scope code   # → Chroma
-agent search "retry logika" --scope docs   # → CLAUDE.md hierarchie
+agent index                       # celý workspace
+agent index --project dashboard   # jen projekt
+agent index --diff                # jen git-změněné soubory
+agent index --force               # přeindexuj vše
+agent search "retry logika"
+agent search "záloha borg" --project backup-dashboard --top 10
+agent search "co projekt dělá" --scope docs
 ```
 
 **Kroky:**
-- [ ] Nainstalovat `chromadb`, ověřit `nomic-embed-text` v Ollama
-- [ ] Napsat `_meta/chroma_indexer.py`
-- [ ] Napsat `agent search` CLI
-- [ ] Volitelně: napojit na git hook
+- [x] `nomic-embed-text` stažen do Ollama
+- [x] `_meta/chroma_indexer.py` — indexer + search (SQLite+numpy, bez chromadb)
+- [x] `~/bin/agent` router aktualizován (index/search → chroma_indexer.py)
+- [x] Otestováno: 87 chunků z 18 souborů, cross-project search funkční
+- [ ] Napojit na git post-commit hook (volitelně)
 
 ---
 
