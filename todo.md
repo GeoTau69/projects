@@ -134,7 +134,7 @@ Postup pro každý projekt:
 
 ### [2] TOKENOVÉ ÚČETNICTVÍ
 **Priorita: VYSOKÁ**
-**Status: TODO**
+**Status: HOTOVO**
 
 **Co implementovat:**
 
@@ -168,10 +168,11 @@ agent billing --top-operations
 ```
 
 **Kroky:**
-- [ ] Vytvořit `~/.ai-agent/` adresář + inicializovat SQLite
-- [ ] Napsat `_meta/token_tracker.py` (wrapper + CLI)
-- [ ] Ověřit aktuální ceny modelů
-- [ ] Integrovat do všech míst kde se volá Anthropic API
+- [x] Vytvořit `~/.ai-agent/` adresář + inicializovat SQLite
+- [x] Napsat `_meta/token_tracker.py` (wrapper + CLI)
+- [x] Ověřit aktuální ceny modelů (sonnet $3/$15, opus $15/$75, haiku $0.8/$4 za 1M tokenů)
+- [x] `~/bin/agent` wrapper (PATH přes ~/.bashrc, funguje ihned)
+- [ ] Integrovat do skriptů volajících Anthropic API (až budou existovat)
 
 ---
 
