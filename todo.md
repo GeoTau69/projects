@@ -178,17 +178,20 @@ agent billing --top-operations
 
 ### [3] PROMPT CACHE / DEDUPLICATION
 **Priorita: STŘEDNÍ**
-**Status: TODO** — závisí na [2]
+**Status: HOTOVO**
 
 Na základě `prompt_hash` z SQLite:
 - Stejný hash v posledních N hodinách → vrátit cached odpověď
 - TTL per typ operace: `doc_update` 24h, `boilerplate` 48h, `code_review` 0 (bez cache)
-- Cache uložena jako rozšíření `token_log` tabulky
+- Cache uložena jako rozšíření `token_log` tabulky (sloupce `response_text`, `cache_hit`)
 
 **Kroky:**
-- [ ] Rozšířit `token_tracker.py` o cache lookup/store
-- [ ] Definovat TTL pravidla
-- [ ] Otestovat na reálném use case
+- [x] Rozšířit `token_tracker.py` o cache lookup/store + DB migrace
+- [x] Definovat TTL pravidla (`CACHE_TTL` dict v kódu)
+- [x] `call_api()` — Python wrapper pro skripty (cache + log v jednom)
+- [x] `agent cache --stats / --list / --clear [--all]`
+- [x] `billing` zobrazuje cache hity + ušetřenou částku
+- [ ] Otestovat na reálném API volání (až budou skripty)
 
 ---
 
