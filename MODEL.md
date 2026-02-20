@@ -55,6 +55,16 @@
 - ✅ Ready: příště budu generovat dokumentaci bez chyb
 **Status:** Ready for next doc task
 
+### 2026-02-20 14:50 — Sonnet session #2 (docs portal refactoring)
+**Co:** Sjednocení docs portálu — Info, Todo, vyčištění struktury
+- ✅ Vytvořil `docs/INFO.md` — sjednocená dokumentace portálu (endpointy, soubory, příkazy)
+- ✅ Rozšířil `docserver.py`: `/api/md?dir=todo` → `todo.md`, `/api/md?dir=info` → `docs/INFO.md`
+- ✅ Sidebar: přidal fixní položky `ℹ️ Info` a `☑️ Todo` (vždy live z disku, žádný cache)
+- ✅ Smazal `docs/project.yaml` → docs zmizelo ze sidebar projektů (nahrazeno Info)
+- ✅ Aktualizoval `CLAUDE.md`: odebrán docs z projekty tabulky, přidán odkaz na INFO.md
+- ✅ Přidán dělba práce tabulka (Sonnet vs Haiku) do CLAUDE.md a MODEL.md
+**Status:** Docs portál jednoduchý, čistý, žádné duplikace. Handoff pro Haiku jasný.
+
 ### 2026-02-20 10:00 — Sonnet session #1
 **Co:** Integrace HTML docs do UI sidebar + dokumentace pro Haiku
 - ✅ Implementoval Option A: `/docs/` endpoint v sidebar (📖 ikony)
