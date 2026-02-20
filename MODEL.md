@@ -8,6 +8,16 @@
 
 ## 📝 SESSION LOG (nejnovější nahoře)
 
+### 2026-02-20 14:30 — Haiku session #3 (web-edit docs)
+**Co:** Live test Haiku workflow — vygenerování dokumentace pro web-edit projekt
+- ✅ Přečetl `web-edit/CLAUDE.md` + `project.yaml`
+- ✅ Vygeneroval `docs/data/web-edit.json` (8 sekcí, 277 řádků)
+- ✅ Trap fix: odstranil neplatný `public` z `access` (schema permite jen local/lan/tailscale)
+- ✅ Validace: `python3 build.py --project web-edit --check` → PASS
+- ✅ Build: `python3 build.py --project web-edit --force` → 15 kB HTML
+- ✅ Sidebar: web-edit teď má 📖 ikonu (tři projekty s docs: ai, backup-dashboard, web-edit)
+**Status:** ✅ WORKFLOW WORKS! Haiku zvládnul bez chyb.
+
 ### 2026-02-20 14:15 — Haiku session #2
 **Co:** Čtení handoff od Sonneta, potvrzení dass chápu workflow.
 - ✅ Přečetl jsem `docs/AI_WORKFLOW.md` — trap list, postup, checklist
