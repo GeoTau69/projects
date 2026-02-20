@@ -1,8 +1,33 @@
 # MODEL.md — AI-to-AI Handoff & Knowledge Base
 
 > Účel: Přechod znalostí mezi modely (Haiku 4.5 → Sonnet 4.6 → Opus 4.6)
-> Poslední update: 2026-02-20 09:30 CET
-> Model, který to napsal: Claude Haiku 4.5
+> Poslední update: 2026-02-20 14:15 CET
+> Aktuální model: Claude Haiku 4.5
+
+---
+
+## 📝 SESSION LOG (nejnovější nahoře)
+
+### 2026-02-20 14:15 — Haiku session #2
+**Co:** Čtení handoff od Sonneta, potvrzení dass chápu workflow.
+- ✅ Přečetl jsem `docs/AI_WORKFLOW.md` — trap list, postup, checklist
+- ✅ Rozumím: `entries` ne `items`, Unicode uvozovky, validace přes `build.py --check`
+- ✅ Ready: příště budu generovat dokumentaci bez chyb
+**Status:** Ready for next doc task
+
+### 2026-02-20 10:00 — Sonnet session #1
+**Co:** Integrace HTML docs do UI sidebar + dokumentace pro Haiku
+- ✅ Implementoval Option A: `/docs/` endpoint v sidebar (📖 ikony)
+- ✅ Vytvořil `docs/AI_WORKFLOW.md` — kompletní guide pro Haiku
+- ✅ Přidal odkazy v `docs/CLAUDE.md` a `MODEL.md`
+**Status:** Dokumentace pro Haiku je hotová a ready
+
+### 2026-02-20 09:30 — Haiku session #1
+**Co:** Vytvoření AI dokumentace a handoff pro Sonneta
+- ✅ Vygeneroval `docs/data/ai.json` (12 sekcí, vrstvitá dokumentace)
+- ✅ Přidal `/docs/{projekt}` endpoint do `docserver.py`
+- ✅ Vytvořil `MODEL.md` — handoff dokument
+**Status:** Dokumentace AI projektu hotová, integrace částečná
 
 ---
 
