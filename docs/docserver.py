@@ -470,6 +470,19 @@ class DocsHandler(BaseHTTPRequestHandler):
             body, status = api_md(dir_param)
             self._send(status, "text/plain; charset=utf-8", body)
 
+        elif path.startswith("/docs/"):
+            # Servírovat HTML z docs/output/{projekt}.html
+            projekt = path[6:].strip("/").split("?")[0]  # Strip /docs/ prefix
+            if not projekt or "/" in projekt:
+                self._send(400, "text/plain; charset=utf-8", b"Invalid projekt")
+                return
+            html_path = ROOT / "docs" / "output" / f"{projekt}.html"
+            if not html_path.exists():
+                self._send(404, "text/plain; charset=utf-8", b"HTML nenalezen pro projekt: " + projekt.encode())
+                return
+            body = html_path.read_bytes()
+            self._send(200, "text/html; charset=utf-8", body)
+
         else:
             self._send(404, "text/plain; charset=utf-8", b"Not Found")
 
