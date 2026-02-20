@@ -73,6 +73,10 @@ journalctl --user -u docs -f
 - Path traversal: `candidate.resolve().parent == ROOT.resolve()` — odmítne `../../etc/passwd`
 - Žádné subprocess volání, žádné privilegované operace
 
+## AI workflow
+
+Před generováním dokumentace přečti: `docs/AI_WORKFLOW.md` — postup, trap list, checklist.
+
 ## build.py — JSON → HTML pipeline
 
 AI generuje `data/{projekt}.json` → `build.py` renderuje HTML (žádné AI).

@@ -401,6 +401,11 @@ TTL se liší dle operace:
 
 ---
 
+## 📖 Dokumentace pro Haiku — generování docs
+
+Před generováním dokumentace přečti: **`docs/AI_WORKFLOW.md`**
+Obsahuje: postup krok za krokem, strukturu JSON, trap list, checklist.
+
 ## 📋 Checklist pro dalšího modela (Sonnet 4.6+)
 
 Když budeš pokračovat, zkontroluj:
