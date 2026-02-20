@@ -29,6 +29,11 @@ Fedora server: LAN `192.168.0.101` · Tailscale `fedora` / `100.117.55.88`
 - Každý projekt má: `project.yaml` (metadata) + `CLAUDE.md` (kontext)
 - Backup soubory (`*.backup-*`) neverzovat · privilegované příkazy přes `sudo`
 
+## Kontextové soubory
+
+- `MODEL.md` — AI-to-AI handoff: stav, architektura, session log
+- `todo.md` — centrální backlog
+
 ## Příkazy workspace
 
 ```bash

@@ -14,7 +14,8 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 
-ROOT = Path(__file__).parent.parent   # ~/projects/
+ROOT       = Path(__file__).parent.parent          # ~/projects/
+OUTPUT_DIR = Path(__file__).parent / "output"      # docs/output/
 PORT = 8080
 
 STATUS_ICON = {"active": "🟢", "wip": "🟡", "planned": "⚪", "archived": "📦"}
@@ -86,6 +87,7 @@ def api_projects() -> bytes:
             "port_ok": port_ok,
             "description": p.get("description", ""),
             "has_claude": p["_has_claude"],
+            "has_html_doc": (OUTPUT_DIR / f"{p['_dir']}.html").exists(),
         })
     return json.dumps(result, ensure_ascii=False).encode("utf-8")
 
@@ -209,6 +211,15 @@ body {
   color: #30363d;
   text-transform: uppercase;
 }
+.nav-doc-link {
+  font-size: 0.75rem;
+  text-decoration: none;
+  opacity: 0.35;
+  flex-shrink: 0;
+  padding: 0 2px;
+  line-height: 1;
+}
+.nav-item:hover .nav-doc-link { opacity: 1; }
 
 /* ── Main panel ── */
 #main {
@@ -363,11 +374,21 @@ function makeNavItem(dir, icon, label, port, project) {
   el.className = 'nav-item';
   el.dataset.dir = dir;
   el.title = project ? project.description : 'Master dokumentace (~/projects/CLAUDE.md)';
+
+  const docLink = (project && project.has_html_doc)
+    ? `<a class="nav-doc-link" href="/docs/${dir}" target="_blank" title="Otevřít HTML dokumentaci">📖</a>`
+    : '';
+
   el.innerHTML = `
     <span class="nav-icon">${icon}</span>
     <span class="nav-label">${label}</span>
     <span class="nav-port">${port}</span>
+    ${docLink}
   `;
+
+  if (project && project.has_html_doc) {
+    el.querySelector('.nav-doc-link').addEventListener('click', e => e.stopPropagation());
+  }
   el.addEventListener('click', () => selectProject(dir, el));
   return el;
 }
