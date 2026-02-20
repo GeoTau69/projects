@@ -8,6 +8,17 @@
 
 ## 📝 SESSION LOG (nejnovější nahoře)
 
+### 2026-02-20 14:45 — Haiku session #4 (git docs)
+**Co:** Druhý test Haiku workflow — vygenerování dokumentace pro git projekt
+- ✅ Přečetl `git/CLAUDE.md` (komplexní dokumentace git setupu, remoty, kredenciály, workflow)
+- ✅ Vygeneroval `docs/data/git.json` (9 sekcí, 313 řádků) — Přehled, Přístupy, Remoty, Credentials, Workflow, Bezpečnost, Větvení, Integrace projektů, CLI Reference, FAQ
+- ✅ Validace: `python3 build.py --project git --check` → PASS
+- ✅ Build: `python3 build.py --project git --force` → 18 kB HTML
+- ✅ HTML artifacts: git.html existuje v docs/output/ (18 kB)
+- ✅ Sidebar: git teď má 📖 ikonu (čtyři projekty s docs: ai, backup-dashboard, git, web-edit)
+**Status:** ✅ WORKFLOW 100% WORKS! Žádné chyby, dokumentace kvalitní.
+**Timestamp:** 2026-02-20 14:45 CET
+
 ### 2026-02-20 14:30 — Haiku session #3 (web-edit docs)
 **Co:** Live test Haiku workflow — vygenerování dokumentace pro web-edit projekt
 - ✅ Přečetl `web-edit/CLAUDE.md` + `project.yaml`
@@ -60,9 +71,9 @@
 | **Model Routing** | ✅ HOTOVO | Automatický výběr LLM (local vs cloud) |
 | **Docs Pipeline** | ✅ HOTOVO | JSON→HTML (Jinja2), build.py, schema |
 | **AI Dokumentace** | ✅ HOTOVO | `docs/data/ai.json` (12 sekcí, 1300+ řádků) |
-| **Docs integrace** | 🟡 ČÁSTEČNĚ | `/docs/{projekt}` endpoint přidán, ale UI neví |
+| **Docs integrace** | ✅ HOTOVO | `/docs/{projekt}` endpoint + sidebar 📖 ikony, 4 projekty dokumentovány |
 | **Git post-commit hook** | ❌ TODO | Volitelně — automatické reindexování |
-| **Ostatní docs** | ❌ TODO | dashboard.json, web-edit.json, docs.json |
+| **Ostatní docs** | 🟡 ČÁSTEČNĚ | ✅ ai.json, ✅ web-edit.json, ✅ git.json · ❌ TODO: dashboard.json, docs.json |
 
 ---
 

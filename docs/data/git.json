@@ -1,0 +1,313 @@
+{
+  "project": "git",
+  "display_name": "Git Integrace",
+  "version": "1.0.0",
+  "updated": "2026-02-20",
+  "description": "Centrální dokumentace git setupu, workflow a integrace napříč workspace.",
+  "status": "active",
+  "port": null,
+  "tech": ["git", "gitea", "github"],
+  "sections": [
+    {
+      "id": "prehled",
+      "title": "Přehled",
+      "icon": "📚",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Workspace <code>~/projects/</code> je <strong>monorepo</strong> — jeden git repozitář pro všechny projekty. <strong>Primární remote:</strong> Gitea (lokální), <strong>mirror:</strong> GitHub (automaticky)."
+        },
+        {
+          "type": "table",
+          "headers": ["Atribut", "Hodnota"],
+          "rows": [
+            ["<strong>Identita</strong>", "<code>geo &lt;jk@kompi.cz&gt;</code>"],
+            ["<strong>Default branch</strong>", "<code>main</code>"],
+            ["<strong>Primární remote</strong>", "Gitea <code>localhost:3000</code>"],
+            ["<strong>Mirror</strong>", "GitHub <code>GeoTau69/projects</code>"],
+            ["<strong>Autentizace</strong>", "Gitea: HTTP Basic (~/.git-credentials), GitHub: SSH (~/.ssh/id_ed25519)"]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pristup",
+      "title": "Přístupy",
+      "icon": "🌐",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Gitea (primární)"
+        },
+        {
+          "type": "table",
+          "headers": ["Síť", "URL"],
+          "rows": [
+            ["<strong>Lokální</strong>", "<code>http://localhost:3000</code>"],
+            ["<strong>LAN</strong>", "<code>http://192.168.0.101:3000</code>"],
+            ["<strong>Tailscale</strong>", "<code>http://fedora:3000</code> · <code>http://100.117.55.88:3000</code>"]
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "GitHub (mirror)"
+        },
+        {
+          "type": "text",
+          "text": "Repozitář: <code>github.com/GeoTau69/projects</code> — automaticky synced z Gitea."
+        }
+      ]
+    },
+    {
+      "id": "remoty",
+      "title": "Git Remoty",
+      "icon": "🔗",
+      "blocks": [
+        {
+          "type": "table",
+          "headers": ["Remote", "URL", "Typ"],
+          "rows": [
+            ["<code>gitea</code>", "<code>http://localhost:3000/geo/projects.git</code>", "primární (HTTP)"],
+            ["<code>github</code>", "<code>git@github.com:GeoTau69/projects.git</code>", "mirror (SSH)"]
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "Push na oba remoty"
+        },
+        {
+          "type": "code",
+          "lang": "bash",
+          "text": "git push gitea main && git push github main"
+        }
+      ]
+    },
+    {
+      "id": "credentials",
+      "title": "Autentizace",
+      "icon": "🔐",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Gitea — HTTP Basic Auth"
+        },
+        {
+          "type": "card",
+          "variant": "info",
+          "title": "🔑 ~/.git-credentials",
+          "text": "Obsahuje HTTP Basic Auth pro Gitea. Formát: <code>http://user:password@host</code>"
+        },
+        {
+          "type": "heading",
+          "text": "GitHub — SSH"
+        },
+        {
+          "type": "card",
+          "variant": "info",
+          "title": "🔑 ~/.ssh/id_ed25519",
+          "text": "EdDSA privátní klíč pro SSH autentizaci. Veřejný klíč: <code>~/.ssh/id_ed25519.pub</code>"
+        },
+        {
+          "type": "heading",
+          "text": "GitHub CLI"
+        },
+        {
+          "type": "text",
+          "text": "Příkaz <code>gh</code> umožňuje správu GitHub PR, issues, atd. Autentizace: <code>gh auth login</code>"
+        }
+      ]
+    },
+    {
+      "id": "workflow",
+      "title": "Git Workflow",
+      "icon": "♻️",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Základní workflow"
+        },
+        {
+          "type": "code",
+          "lang": "bash",
+          "text": "git status                           # Ověř stav\ngit add <soubory>                  # Nikdy git add -A (může přidat .env, *.backup-*)\ngit commit -m \"zpráva\"              # Vytvoř commit\ngit push gitea main && git push github main  # Push na oba remoty"
+        },
+        {
+          "type": "heading",
+          "text": "Komitování z dashboardu"
+        },
+        {
+          "type": "text",
+          "text": "<code>backup-dashboard</code> má webové rozhraní pro git na portu 8090: <code>http://localhost:8090/git</code>. Umožňuje prohlížení logu, diffu, commitování a rollback bez CLI."
+        }
+      ]
+    },
+    {
+      "id": "bezpecnost",
+      "title": "Co neverzovat",
+      "icon": "🚫",
+      "blocks": [
+        {
+          "type": "list",
+          "entries": [
+            "<code>*.backup-*</code> — ruční zálohy souborů (jsou v <code>.gitignore</code>)",
+            "<code>.env</code>, <code>credentials.*</code> — citlivá data",
+            "<code>__pycache__/</code>, <code>*.pyc</code> — generované Python soubory",
+            "<code>docs/output/</code> — generované HTML (build.py output)",
+            "<code>.build-state.json</code> — hash cache"
+          ]
+        },
+        {
+          "type": "card",
+          "variant": "warning",
+          "title": "⚠️ Nikdy git add -A",
+          "text": "Všechny soubory lze přidat neintenzionálně. Vždy <strong>explicitně</strong> pojmenovávej soubory."
+        }
+      ]
+    },
+    {
+      "id": "vetve",
+      "title": "Větvení",
+      "icon": "🌳",
+      "blocks": [
+        {
+          "type": "list",
+          "entries": [
+            "<strong>main</strong> — výchozí a primární větev (produkce)",
+            "<strong>feature/*</strong> — feature větve dle potřeby, merge do main",
+            "<strong>experimental/*</strong> — experimentální kód (nemerge bez review)"
+          ]
+        },
+        {
+          "type": "code",
+          "lang": "bash",
+          "text": "git switch -c feature/nazev       # Nová feature větev\ngit switch main                    # Zpět na main\ngit merge feature/nazev             # Merge do main"
+        }
+      ]
+    },
+    {
+      "id": "integrace-projektov",
+      "title": "Git integrace v projektech",
+      "icon": "🔧",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "backup-dashboard — Git UI"
+        },
+        {
+          "type": "text",
+          "text": "<code>backup-dashboard/routes/git.py</code> implementuje HTTP endpointy. Webové rozhraní: <code>http://localhost:8090/git</code>"
+        },
+        {
+          "type": "table",
+          "headers": ["Endpoint", "Metoda", "Popis"],
+          "rows": [
+            ["<code>/git</code>", "GET", "Git stránka (git.html template)"],
+            ["<code>/api/git/log</code>", "GET", "Historie commitů"],
+            ["<code>/api/git/diff</code>", "GET", "Diff konkrétního commitu"],
+            ["<code>/api/git/status</code>", "GET", "Aktuální status (staged/unstaged)"],
+            ["<code>/api/git/commit</code>", "POST", "Vytvoření commitu z UI"],
+            ["<code>/api/git/rollback</code>", "POST", "Rollback na commit"]
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "info-sync.py — SYNC bloky"
+        },
+        {
+          "type": "text",
+          "text": "<code>info-sync.py</code> volá <code>git log --oneline -1</code> a zapisuje do <code><!-- SYNC:START --></code> bloků v CLAUDE.md. Např: <code>- Poslední commit: `abc123` — zpráva</code>"
+        },
+        {
+          "type": "heading",
+          "text": "web-edit — bez git integrace"
+        },
+        {
+          "type": "text",
+          "text": "<code>web-edit/</code> umí editovat MD soubory online, ale nemá vlastní git committing — změny je třeba commitovat ručně přes CLI nebo dashboard."
+        },
+        {
+          "type": "heading",
+          "text": "docs — nezávislé"
+        },
+        {
+          "type": "text",
+          "text": "<code>docs/docserver.py</code> čte CLAUDE.md přímo z disku. Git info zobrazuje jen skrze SYNC bloky zapsané <code>info-sync.py</code>."
+        }
+      ]
+    },
+    {
+      "id": "cli-reference",
+      "title": "CLI Reference",
+      "icon": "⌨️",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Status a diff"
+        },
+        {
+          "type": "code",
+          "lang": "bash",
+          "text": "git status                         # Aktuální stav\ngit diff                           # Unstaged změny\ngit diff --staged                  # Staged změny\ngit log --oneline -10              # Posledních 10 commitů\ngit show abc123                    # Detail konkrétního commitu"
+        },
+        {
+          "type": "heading",
+          "text": "Staginig a commit"
+        },
+        {
+          "type": "code",
+          "lang": "bash",
+          "text": "git add file1 file2                # Stage konkrétních souborů\ngit restore file1                  # Vrátí změny v file1\ngit restore --staged file1         # Unstage file1\ngit commit -m \"zpráva\"              # Vytvoř commit\ngit commit --amend                 # Uprav poslední commit (varování: změní hash)"
+        },
+        {
+          "type": "heading",
+          "text": "Push a pull"
+        },
+        {
+          "type": "code",
+          "lang": "bash",
+          "text": "git push gitea main                # Push na Gitea\ngit push github main               # Push na GitHub\ngit push gitea main && git push github main  # Push na oba\ngit pull gitea main                # Pull z Gitea\ngit fetch --all                    # Fetch ze všech remotů"
+        },
+        {
+          "type": "heading",
+          "text": "Rollback a history"
+        },
+        {
+          "type": "code",
+          "lang": "bash",
+          "text": "git reset --soft HEAD~1            # Undo commit, změny zůstávají staged\ngit reset --hard HEAD~1            # Undo commit, všechny změny se zahod (VAROVÁNÍ)\ngit revert abc123                  # Vytvoř nový commit, který ruší abc123\ngit reflog                         # Historie všech HEAD změn (pro recovery)"
+        }
+      ]
+    },
+    {
+      "id": "faq",
+      "title": "FAQ",
+      "icon": "❓",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Jak se synchronizuje GitHub s Gitea?"
+        },
+        {
+          "type": "text",
+          "text": "Manuálně — když pushneš na oba remoty: <code>git push gitea main && git push github main</code>. Není to automatické, ale lze nastavit GitHub Actions pro mirror."
+        },
+        {
+          "type": "heading",
+          "text": "Co když se commitnu špatnému commitovacímu zprávě?"
+        },
+        {
+          "type": "text",
+          "text": "Pokud ještě jsi nepushoval: <code>git commit --amend -m \"nová zpráva\"</code>. Pokud pushoval: <code>git revert abc123</code> — vytvoří nový commit, který ruší změny (vhodné pro spolupráci)."
+        },
+        {
+          "type": "heading",
+          "text": "Jak se vrátit na starší commit?"
+        },
+        {
+          "type": "text",
+          "text": "Viz tab CLI Reference → Rollback. <strong>Varování:</strong> <code>git reset --hard</code> zmaže všechny změny — používej jen pokud si jistý."
+        }
+      ]
+    }
+  ]
+}
