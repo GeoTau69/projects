@@ -93,9 +93,13 @@ def api_projects() -> bytes:
 
 
 def api_md(dir_param: str) -> tuple[bytes, int]:
-    """Vrátí surový markdown obsah CLAUDE.md pro daný projekt (nebo master)."""
+    """Vrátí surový markdown obsah CLAUDE.md pro daný projekt (nebo master/todo)."""
     if dir_param == "master":
         md_path = ROOT / "CLAUDE.md"
+    elif dir_param == "todo":
+        md_path = ROOT / "todo.md"
+    elif dir_param == "info":
+        md_path = ROOT / "docs" / "INFO.md"
     else:
         # Ochrana path traversal — pouze přímé podadresáře ROOT
         candidate = ROOT / dir_param
@@ -356,7 +360,9 @@ async function loadProjects() {
   const nav = document.getElementById('nav-list');
   nav.innerHTML = '';
 
-  // Master CLAUDE.md jako první položka
+  // Fixní položky nahoře
+  nav.appendChild(makeNavItem('info', 'ℹ️', 'Info', '', null));
+  nav.appendChild(makeNavItem('todo', '☑️', 'Todo', '', null));
   nav.appendChild(makeNavItem('master', '📋', 'Overview (master)', '', null));
   nav.appendChild(Object.assign(document.createElement('div'), {
     className: 'nav-sep', textContent: '── projekty ──'
