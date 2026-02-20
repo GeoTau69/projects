@@ -8,6 +8,19 @@
 
 ## 📝 SESSION LOG (nejnovější nahoře)
 
+### 2026-02-20 15:00 — Haiku session #5 (dashboard docs — architektura)
+**Co:** Třetí test + rozšíření dokumentace pro dashboard projekt
+- ✅ Přečetl `dashboard/CLAUDE.md` + `dashboard.py` (single-file app, systemd monitoring)
+- ✅ Vygeneroval `docs/data/dashboard.json` (8 sekcí, 439 řádků)
+  • Přehled, Architektura, Konfigurace (.systems.json), Jak funguje, Services, Modes, CLI, Proč to máme
+- ✅ Detailní popis workflow: systemd checks → HTML → 5s auto-refresh
+- ✅ Vysvětlení business value: centrální monitoring, Tailscale Funnel, custom check příkazy
+- ✅ Validace: `build.py --project dashboard --check` → PASS
+- ✅ Build: `python3 build.py --project dashboard --force` → 22 kB HTML
+- ✅ Sidebar: dashboard má 📖 ikonu (5 projektů s docs: ai, backup-dashboard, dashboard, git, web-edit)
+**Status:** ✅ WORKFLOW + SONNET RESPONSIBILITY SPLIT WORKING! Dokumentace podrobná a kvalitní.
+**Timestamp:** 2026-02-20 15:00 CET
+
 ### 2026-02-20 14:45 — Haiku session #4 (git docs)
 **Co:** Druhý test Haiku workflow — vygenerování dokumentace pro git projekt
 - ✅ Přečetl `git/CLAUDE.md` (komplexní dokumentace git setupu, remoty, kredenciály, workflow)
@@ -89,7 +102,7 @@
 | **AI Dokumentace** | ✅ HOTOVO | `docs/data/ai.json` (12 sekcí, 1300+ řádků) |
 | **Docs integrace** | ✅ HOTOVO | `/docs/{projekt}` endpoint + sidebar 📖 ikony, 4 projekty dokumentovány |
 | **Git post-commit hook** | ❌ TODO | Volitelně — automatické reindexování |
-| **Ostatní docs** | 🟡 ČÁSTEČNĚ | ✅ ai.json, ✅ web-edit.json, ✅ git.json · ❌ TODO: dashboard.json, docs.json |
+| **Ostatní docs** | 🟡 ČÁSTEČNĚ | ✅ ai.json, ✅ backup-dashboard.json, ✅ dashboard.json, ✅ web-edit.json, ✅ git.json · ❌ TODO: docs.json |
 
 ---
 
