@@ -58,6 +58,22 @@
 
 ---
 
+## 🤖 Dělba práce — Model responsibilities
+
+| Model | Odpovědnost |
+|-------|-------------|
+| **Sonnet 4.6** | Vývoj, architektura, struktura projektů, psaní kódu a MD dokumentace (CLAUDE.md) |
+| **Haiku 4.5** | Generování AI dokumentace z CLAUDE.md → JSON → HTML |
+
+**Workflow:**
+1. Sonnet vytvoří/aktualizuje projekt + `{projekt}/CLAUDE.md`
+2. Haiku čte CLAUDE.md → generuje `docs/data/{projekt}.json` → `build.py` renderuje HTML
+3. Dokumentace se zobrazí v portálu s 📖 ikonou
+
+**Handoff:** Haiku čte MODEL.md (session log), AI_WORKFLOW.md (procedura) a CLAUDE.md každého projektu.
+
+---
+
 ## 🎯 Stav projektu — TL;DR
 
 **Workspace**: `/home/geo/projects/` — monorepo s 6 aktivními projekty

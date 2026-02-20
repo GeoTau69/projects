@@ -29,6 +29,18 @@ Fedora server: LAN `192.168.0.101` · Tailscale `fedora` / `100.117.55.88`
 - Každý projekt má: `project.yaml` (metadata) + `CLAUDE.md` (kontext)
 - Backup soubory (`*.backup-*`) neverzovat · privilegované příkazy přes `sudo`
 
+## Dělba práce — Model routing
+
+| Model | Odpovědnost | Příklady |
+|-------|-------------|----------|
+| **Sonnet 4.6** | Vývoj, architektura, struktura, kód | Vytváření projektů, psaní MD souborů (CLAUDE.md), implementace features, refactoring |
+| **Haiku 4.5** | Dokumentace, AI pipeline | Generování dokumentace z CLAUDE.md → `docs/data/{projekt}.json` → HTML |
+
+Workflow:
+1. **Sonnet** vytvoří/aktualizuje projekt + `{projekt}/CLAUDE.md`
+2. **Haiku** čte CLAUDE.md → generuje `docs/data/{projekt}.json` → `build.py` renderuje HTML
+3. Dokumentace se automaticky zobrazí v portálu s 📖 ikonou
+
 ## Kontextové soubory
 
 - `MODEL.md` — AI-to-AI handoff: stav, architektura, session log
