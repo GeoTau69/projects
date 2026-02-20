@@ -1,0 +1,277 @@
+{
+  "project": "web-edit",
+  "display_name": "Micro DMS Collaborative Editor",
+  "version": "1.0.0",
+  "updated": "2026-02-20",
+  "description": "Editor pro dokumentaci s real-time multi-user editací přes WebSocket.",
+  "status": "active",
+  "port": 8765,
+  "tech": ["python", "aiohttp", "websocket"],
+  "access": {
+    "local": "http://localhost:8765",
+    "lan": "http://192.168.0.101:8765",
+    "tailscale": "http://fedora:8765"
+  },
+  "back_link": {"href": "/", "label": "🏠 Zpět na Dashboard"},
+  "modules": [
+    {
+      "id": "mdserver",
+      "name": "mdserver.py",
+      "file": "mdserver.py",
+      "purpose": "Single-file aplikace — WebSocket server pro editaci markdownu s live preview.",
+      "status": "stable",
+      "public_methods": [
+        {
+          "name": "run",
+          "params": "data_dir: str = '/home/geo/Shared/IC', port: int = 8765",
+          "returns": "None",
+          "description": "Spustí aiohttp server s WebSocket supportem pro multi-user editaci."
+        }
+      ],
+      "dependencies": ["aiohttp"],
+      "notes": "CLI: mdserver.py [path] [port]. Zálohy: /home/geo/Shared/IC/tmp/. Vyloučené dirs: code, tmp, verze, .claude"
+    }
+  ],
+  "sections": [
+    {
+      "id": "prehled",
+      "title": "Přehled",
+      "icon": "📝",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "<strong>Micro DMS</strong> je online editor pro Markdown dokumentaci s <strong>real-time multi-user editací</strong> přes WebSocket. Více lidí může editovat tentýž soubor najednou, každý vidí live preview a změny ostatních."
+        },
+        {
+          "type": "table",
+          "headers": ["Funkce", "Popis"],
+          "rows": [
+            ["<strong>Live preview</strong>", "Markdown se renderuje v reálném čase při psaní"],
+            ["<strong>Multi-user</strong>", "Více editorů najednou v jedné room"],
+            ["<strong>WebSocket</strong>", "Low-latency komunikace, synchronizace"],
+            ["<strong>Zálohy</strong>", "Automatické snapshoty do <code>/tmp/</code>"],
+            ["<strong>Tailscale Funnel</strong>", "Veřejný přístup bez portů — <code>https://fedora.tail41712d.ts.net/</code>"]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pristup",
+      "title": "Přístup",
+      "icon": "🌐",
+      "blocks": [
+        {
+          "type": "table",
+          "headers": ["Síť", "URL"],
+          "rows": [
+            ["<strong>Lokální</strong>", "<code>http://localhost:8765</code>"],
+            ["<strong>LAN</strong>", "<code>http://192.168.0.101:8765</code>"],
+            ["<strong>Tailscale</strong>", "<code>http://fedora:8765</code>"]
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "Veřejný přístup — Tailscale Funnel"
+        },
+        {
+          "type": "text",
+          "text": "Pro veřejné sdílení bez portů: <code>https://fedora.tail41712d.ts.net/</code> — HTTPS proxy přes Tailscale, autentizace Tailscale."
+        }
+      ]
+    },
+    {
+      "id": "architektura",
+      "title": "Architektura",
+      "icon": "🏗️",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Komponenty"
+        },
+        {
+          "type": "list",
+          "entries": [
+            "<strong>Backend:</strong> Python <code>aiohttp</code> + WebSocket (asynchronní)",
+            "<strong>Frontend:</strong> HTML/CSS/JS inline (dark theme, no frameworks)",
+            "<strong>Live preview:</strong> Marked.js pro Markdown rendering",
+            "<strong>Data:</strong> <code>/home/geo/Shared/IC</code> — příslušný adresář"
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "Multi-user synchronizace"
+        },
+        {
+          "type": "text",
+          "text": "WebSocket rooms — každá otevřená místnost = jeden <code>.md</code> soubor. Editory v Room A nevidí změny v Room B. Synchronizace je optimistická — předpokládáme, že editory nekonfliktují (protože sdílí stejný session)."
+        },
+        {
+          "type": "heading",
+          "text": "Zálohy"
+        },
+        {
+          "type": "text",
+          "text": "Při každém uložení se <code>soubor.md</code> zálohuje do <code>/home/geo/Shared/IC/tmp/</code> s timestamp: <code>soubor_2026-02-20_143015.md</code>."
+        }
+      ]
+    },
+    {
+      "id": "cli",
+      "title": "CLI & Spuštění",
+      "icon": "⌨️",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Příkazům"
+        },
+        {
+          "type": "code",
+          "lang": "bash",
+          "text": "# Výchozí — /home/geo/Shared/IC, port 8765\npython3 web-edit/mdserver.py\n\n# Vlastní adresář a port\npython3 web-edit/mdserver.py /var/docs 9000\n\n# Systemd\nsystemctl --user status mdserver\nsystemctl --user restart mdserver\njournalctl --user -u mdserver -f"
+        },
+        {
+          "type": "heading",
+          "text": "Init (dev mode)"
+        },
+        {
+          "type": "code",
+          "lang": "bash",
+          "text": "cd ~/projects/web-edit\npython3 mdserver.py /home/geo/Shared/IC 8765"
+        }
+      ]
+    },
+    {
+      "id": "use-cases",
+      "title": "Use Cases",
+      "icon": "💡",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Case 1: Společné psaní dokumentace"
+        },
+        {
+          "type": "text",
+          "text": "Dva lidé píší dokumentaci pro projekt. Otevřou stejný <code>.md</code> soubor v Micro DMS. Obou vidí live preview druhého — bez merge konfliktů."
+        },
+        {
+          "type": "heading",
+          "text": "Case 2: Veřejné sdílení — Tailscale Funnel"
+        },
+        {
+          "type": "text",
+          "text": "Sdílíš URL <code>https://fedora.tail41712d.ts.net/</code> s klientem. Klient se připojí a vídí dokumentaci — bez VPN, bez portů."
+        },
+        {
+          "type": "heading",
+          "text": "Case 3: Integrace se SYNC bloky"
+        },
+        {
+          "type": "text",
+          "text": "Micro DMS je ideální pro editaci <code><!-- SYNC:START --></code> bloků v CLAUDE.md souborech — live preview, multi-user, zálohy."
+        }
+      ]
+    },
+    {
+      "id": "slovnik",
+      "title": "Slovník pojmů",
+      "icon": "📖",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Room (WebSocket místnost)"
+        },
+        {
+          "type": "text",
+          "text": "Jedno otevření jednoho souboru = jedna Room. Pokud soubor otevřeš dvakrát (v dvou oknech), jsou to dvě oddělené Rooms se svými buffery."
+        },
+        {
+          "type": "heading",
+          "text": "Live preview"
+        },
+        {
+          "type": "text",
+          "text": "Markdown se rendéruje v reálném čase v pravém panelu. Klidné psaní — preview se automaticky aktualizuje."
+        },
+        {
+          "type": "heading",
+          "text": "Tailscale Funnel"
+        },
+        {
+          "type": "text",
+          "text": "Veřejný proxy přes Tailscale — přenášíš localhost port na veřejnou HTTPS URL bez portů, firewallu."
+        }
+      ]
+    },
+    {
+      "id": "faq",
+      "title": "FAQ",
+      "icon": "❓",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Jak se synchronizují editory?"
+        },
+        {
+          "type": "text",
+          "text": "WebSocket — server brodcastuje změny všem klientům v Room. Optimistická synchronizace — předpokládáme, že editory nekonfliktují."
+        },
+        {
+          "type": "heading",
+          "text": "Co když se editující odpojí?"
+        },
+        {
+          "type": "text",
+          "text": "Buffer se zahod — je to ephemeral. Ulož si změny, než se odpojíš (je tlačítko Save)."
+        },
+        {
+          "type": "heading",
+          "text": "Kde jsou zálohy?"
+        },
+        {
+          "type": "text",
+          "text": "<code>/home/geo/Shared/IC/tmp/</code> — každé uložení si dělá snapshot s timestampem."
+        },
+        {
+          "type": "heading",
+          "text": "Je to zabezpečeno?"
+        },
+        {
+          "type": "text",
+          "text": "Tailscale Funnel má autentizaci přes Tailscale. WebSocket je plain HTTP — není to pro produkci na internetu bez TLS."
+        }
+      ]
+    },
+    {
+      "id": "tech",
+      "title": "Technické detaily",
+      "icon": "🔧",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Dependencies"
+        },
+        {
+          "type": "code",
+          "lang": "bash",
+          "text": "pip install aiohttp\n# Vše ostatní: stdlib Python"
+        },
+        {
+          "type": "heading",
+          "text": "Single-file architektura"
+        },
+        {
+          "type": "text",
+          "text": "<code>mdserver.py</code> obsahuje vše: HTTP handler, WebSocket, file I/O, logging. Neexistují žádné další moduly či route files."
+        },
+        {
+          "type": "heading",
+          "text": "Vyloučené adresáře"
+        },
+        {
+          "type": "text",
+          "text": "V file listingu jsou schované: <code>code/</code>, <code>tmp/</code>, <code>verze/</code>, <code>.claude/</code> — aby se neobjevovaly v UI."
+        }
+      ]
+    }
+  ]
+}
