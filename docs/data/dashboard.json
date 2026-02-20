@@ -1,0 +1,439 @@
+{
+  "project": "dashboard",
+  "display_name": "Projects Dashboard",
+  "version": "1.0.0",
+  "updated": "2026-02-20",
+  "description": "Centrální monitoring dashboard pro live stav všech služeb a systémových módů v workspace.",
+  "status": "active",
+  "port": 8099,
+  "tech": ["python", "stdlib"],
+  "access": {
+    "local": "http://localhost:8099",
+    "lan": "http://192.168.0.101:8099",
+    "tailscale": "http://fedora:8099 · http://100.117.55.88:8099"
+  },
+  "back_link": {"href": "/", "label": "🏠 Zpět na Dashboard"},
+  "modules": [
+    {
+      "id": "dashboard_py",
+      "name": "dashboard.py",
+      "file": "dashboard.py",
+      "purpose": "Single-file aplikace — HTTP server s live HTML dashboard pro monitoring",
+      "status": "stable",
+      "public_methods": [
+        {
+          "name": "run_cmd",
+          "params": "cmd: list[str]",
+          "returns": "tuple[str, int]",
+          "description": "Spustí shell příkaz s timeoutem 3s, vrátí (stdout, returncode)."
+        },
+        {
+          "name": "svc_status",
+          "params": "name: str, user_svc: bool",
+          "returns": "str",
+          "description": "Vrátí systemd stav služby: 'active', 'inactive', 'unknown'."
+        },
+        {
+          "name": "remote_mode_active",
+          "params": "",
+          "returns": "bool",
+          "description": "Zjistí, zda je Tailscale Funnel aktivní (port 8765)."
+        },
+        {
+          "name": "load_systems",
+          "params": "",
+          "returns": "dict",
+          "description": "Načte konfiguraci ze ~/.systems.json (services + modes)."
+        },
+        {
+          "name": "build_html",
+          "params": "",
+          "returns": "str",
+          "description": "Generuje HTML: načte stav služeb/módů, vrátí vykreslenou stránku."
+        }
+      ],
+      "dependencies": ["stdlib: json, subprocess, datetime, http.server, pathlib"],
+      "notes": "Zero-dependency aplikace. HTML šablona inline (raw string). Auto-refresh: 5s (meta tag). Konfigurace čtena ze .systems.json při každém requestu (live data)."
+    }
+  ],
+  "sections": [
+    {
+      "id": "prehled",
+      "title": "Přehled",
+      "icon": "📊",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "<strong>Projects Dashboard</strong> je centrální monitoring panel pro stav všech služeb a systémových módů v workspace. Čte konfiguraci ze <code>~/.systems.json</code> a zobrazuje live status s 5sekundovým auto-refresh."
+        },
+        {
+          "type": "text",
+          "text": "<strong>Proč ho máme:</strong> Jediné místo, kde vidím, které služby běží, jaké jsou porty, a jaké jsou aktivní systémové módy (např. Tailscale Funnel pro veřejný přístup). Jeden pohled — vše je vidět."
+        },
+        {
+          "type": "table",
+          "headers": ["Funkce", "Popis"],
+          "rows": [
+            ["<strong>Live monitoring</strong>", "Kontroluje systemd status každých 5 sekund"],
+            ["<strong>Services</strong>", "Seznam všech sledovaných služeb (port, status, URL)"],
+            ["<strong>Modes</strong>", "Systémové módy — Tailscale, custom check příkazy"],
+            ["<strong>Timestamp</strong>", "Zobrazuje poslední refresh — vím, jak staré jsou data"],
+            ["<strong>Zero deps</strong>", "Python stdlib only — bez pip instalací"]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "architektura",
+      "title": "Architektura",
+      "icon": "🏗️",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Komponenty"
+        },
+        {
+          "type": "list",
+          "entries": [
+            "<strong>Backend:</strong> Python <code>http.server</code> (stdlib) — sluchá na :8099",
+            "<strong>Frontend:</strong> HTML/CSS inline (dark theme, monospace)",
+            "<strong>Config:</strong> <code>~/.systems.json</code> — JSON se services + modes",
+            "<strong>Refresh:</strong> HTML <code>&lt;meta http-equiv=\"refresh\" content=\"5\"&gt;</code> — vynucuje reload",
+            "<strong>Status check:</strong> <code>systemctl is-active</code> + custom příkazy"
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "Request flow"
+        },
+        {
+          "type": "code",
+          "lang": "bash",
+          "text": "Client GET /\n   ↓\nDashboardHandler.do_GET()\n   ↓\nbuild_html()\n   ├─ load_systems() → čte ~/.systems.json\n   ├─ Pro každou službu: svc_status() → systemctl is-active\n   ├─ Pro každý mód: remote_mode_active() nebo run_cmd()\n   └─ Vrátí HTML s vykresleným stavem\n   ↓\nClient dostane HTML → browser renders + refresh za 5s"
+        },
+        {
+          "type": "heading",
+          "text": "Status indikátory"
+        },
+        {
+          "type": "table",
+          "headers": ["Stav", "Barva", "Čeština"],
+          "rows": [
+            ["<code>active</code>", "🟢 Zelená", "Služba běží"],
+            ["<code>inactive</code>", "🔴 Červená", "Služba zastavena"],
+            ["<code>unknown</code>", "⚫ Šedá", "Chyba při zjišťování stavu"]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "konfigurace",
+      "title": "Konfigurace (.systems.json)",
+      "icon": "⚙️",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Struktura"
+        },
+        {
+          "type": "code",
+          "lang": "json",
+          "text": "{\n  \"services\": [\n    {\n      \"name\": \"backup-dashboard\",\n      \"systemd\": \"backup-dashboard\",\n      \"user_service\": true,\n      \"port\": 8090,\n      \"description\": \"3-vrstvový backup web\",\n      \"url_public\": \"http://fedora:8090\"\n    }\n  ],\n  \"modes\": [\n    {\n      \"id\": \"remote\",\n      \"name\": \"Tailscale Funnel\",\n      \"description\": \"Veřejný proxy přes Tailscale\"\n    }\n  ]\n}"
+        },
+        {
+          "type": "heading",
+          "text": "Pole Services"
+        },
+        {
+          "type": "table",
+          "headers": ["Pole", "Povinné", "Popis"],
+          "rows": [
+            ["<code>name</code>", "✅", "Jméno služby pro UI"],
+            ["<code>systemd</code>", "✅", "Jméno systemd unit (bez .service)"],
+            ["<code>user_service</code>", "✅", "true = <code>systemctl --user</code>, false = <code>systemctl</code>"],
+            ["<code>port</code>", "❌", "Port pro zobrazení (volitelný)"],
+            ["<code>description</code>", "❌", "Textový popis služby"],
+            ["<code>url_public</code>", "❌", "Veřejná URL s ↗ linkem"]
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "Pole Modes"
+        },
+        {
+          "type": "table",
+          "headers": ["Pole", "Popis"],
+          "rows": [
+            ["<code>id</code>", "Identifikátor (\"remote\" = Tailscale Funnel, custom = run_cmd)"],
+            ["<code>name</code>", "Jméno módu v UI"],
+            ["<code>description</code>", "Popis"],
+            ["<code>check_cmd</code>", "Příkaz ke spuštění (vrátí 0 = ON, non-0 = OFF)"]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "jak-funguje",
+      "title": "Jak to funguje",
+      "icon": "⚡",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Services — systemd monitoring"
+        },
+        {
+          "type": "text",
+          "text": "Pro každou službu v <code>services</code> seznamu:"
+        },
+        {
+          "type": "list",
+          "ordered": true,
+          "entries": [
+            "Čti <code>systemd</code> a <code>user_service</code> pole",
+            "Spustí <code>systemctl [--user] is-active {name}</code>",
+            "Dostane odpověď: <code>active</code>, <code>inactive</code>, nebo chyba",
+            "Vykreslí zelenou/červenou tečku + status badge",
+            "Pokud existuje <code>url_public</code>, přidá ↗ odkaz"
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "Modes — custom check příkazy"
+        },
+        {
+          "type": "text",
+          "text": "Dva typy módů:"
+        },
+        {
+          "type": "list",
+          "entries": [
+            "<strong>Remote (Tailscale Funnel):</strong> Hardcoded logika — spustí <code>tailscale funnel status</code>, hledá '8765' nebo 'fedora.tail' v outputu",
+            "<strong>Custom:</strong> Runs <code>check_cmd</code> příkaz — pokud vrátí exit code 0 = ON, jinak = OFF"
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "Auto-refresh mechanismus"
+        },
+        {
+          "type": "text",
+          "text": "HTML obsahuje: <code>&lt;meta http-equiv=\"refresh\" content=\"5\"&gt;</code> — browser automaticky obnoví stránku každých 5 sekund. Při refresh se:"
+        },
+        {
+          "type": "list",
+          "ordered": true,
+          "entries": [
+            "Spustí <code>build_html()</code> — znovu načte .systems.json",
+            "Znovu zkontroluje všechny systemd stavy",
+            "Znovu spustí všechny check příkazy",
+            "Vrátí čerstvé HTML s aktuálním stavem",
+            "Browser zobrazí novou stránku s novým timestampem"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "services",
+      "title": "Services monitoring",
+      "icon": "🔧",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Typický services seznam"
+        },
+        {
+          "type": "table",
+          "headers": ["Služba", "Systemd", "Port", "User svc"],
+          "rows": [
+            ["backup-dashboard", "backup-dashboard", "8090", "✅"],
+            ["dashboard (sám sebe)", "projects-dashboard", "8099", "✅"],
+            ["docs", "docs", "8080", "✅"],
+            ["web-edit", "mdserver", "8765", "✅"],
+            ["Gitea", "gitea", "3000", "❌"]
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "Co vidím v UI"
+        },
+        {
+          "type": "text",
+          "text": "Každá služba má řádek s:"
+        },
+        {
+          "type": "list",
+          "entries": [
+            "🟢/🔴 barevná tečka (status)",
+            "Jméno služby",
+            "Port (pokud nastaven)",
+            "Popis",
+            "ACTIVE/INACTIVE badge",
+            "↗ odkaz (pokud url_public)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "modes",
+      "title": "Modes — systémové módy",
+      "icon": "🎛️",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Tailscale Funnel"
+        },
+        {
+          "type": "text",
+          "text": "Speciální mód — ukazuje, jestli je Tailscale Funnel aktivní (veřejný proxy na :8765). Spustí <code>tailscale funnel status</code> a hledá 'fedora.tail' v outputu."
+        },
+        {
+          "type": "card",
+          "variant": "info",
+          "title": "ℹ️ Co je Tailscale Funnel",
+          "text": "Veřejný HTTPS proxy přes Tailscale network. Pokud je aktivní, můžeš sdílet <code>https://fedora.tail41712d.ts.net/</code> bez portů a bez firewallu."
+        },
+        {
+          "type": "heading",
+          "text": "Custom check příkazy"
+        },
+        {
+          "type": "text",
+          "text": "Příklady custom módů:"
+        },
+        {
+          "type": "code",
+          "lang": "json",
+          "text": "{\n  \"id\": \"backup\",\n  \"name\": \"Backup service\",\n  \"check_cmd\": \"curl -s http://localhost:8090/health\"\n}\n\n{\n  \"id\": \"vpn\",\n  \"name\": \"VPN connection\",\n  \"check_cmd\": \"ping -c 1 8.8.8.8\"\n}"
+        }
+      ]
+    },
+    {
+      "id": "cli",
+      "title": "CLI & Spuštění",
+      "icon": "⌨️",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Systemd"
+        },
+        {
+          "type": "code",
+          "lang": "bash",
+          "text": "systemctl --user status projects-dashboard\nsystemctl --user start projects-dashboard\nsystemctl --user restart projects-dashboard\nsystemctl --user stop projects-dashboard\njournalctl --user -u projects-dashboard -f"
+        },
+        {
+          "type": "heading",
+          "text": "Manuální spuštění (dev)"
+        },
+        {
+          "type": "code",
+          "lang": "bash",
+          "text": "cd ~/projects/dashboard\npython3 dashboard.py\n# Output: Dashboard: http://localhost:8099/"
+        },
+        {
+          "type": "heading",
+          "text": "Konfigurace editace"
+        },
+        {
+          "type": "code",
+          "lang": "bash",
+          "text": "# Edituj .systems.json\nvim ~/.systems.json\n\n# Dashboard si ho přečte při dalším refresh (5s)\n# Nebo manuálně refresh stránku v prohlížeči"
+        }
+      ]
+    },
+    {
+      "id": "proc-to-mame",
+      "title": "Proč to máme",
+      "icon": "❓",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Monitoring bez CLI"
+        },
+        {
+          "type": "text",
+          "text": "Místo aby sis pamatoval 20 příkazů (<code>systemctl status backup-dashboard</code>, <code>curl localhost:8090</code>, atd.), máš vše v jednom dashboardu. Otevři prohlížeč — vidíš všechno."
+        },
+        {
+          "type": "heading",
+          "text": "Detekce padlých služeb"
+        },
+        {
+          "type": "text",
+          "text": "Když se něco slamne, vidíš to okamžitě — červená tečka. Auto-refresh means pokud si někdo službu restartuje, vidíš to za 5 sekund bez ručního refreshu."
+        },
+        {
+          "type": "heading",
+          "text": "Veřejné adresy na jednom místě"
+        },
+        {
+          "type": "text",
+          "text": "Veřejné URL služeb (Tailscale Funnel, LAN adresa) jsou viditelné s klikacími linky. Nemusíš si je pamatovat."
+        },
+        {
+          "type": "heading",
+          "text": "Systémové módy"
+        },
+        {
+          "type": "text",
+          "text": "Ukazuje, jaké jsou aktivní módy (VPN, Tailscale, custom healthchecks). Pomocí <code>check_cmd</code> můžeš libovolný shell příkaz превратить na \"je-li to ON/OFF\"."
+        },
+        {
+          "type": "heading",
+          "text": "Zero setup"
+        },
+        {
+          "type": "text",
+          "text": "Žádné npm instalace, žádné framework magie. Python stdlib + HTML. Jednoduché, rychlé, spolehlivé."
+        }
+      ]
+    },
+    {
+      "id": "faq",
+      "title": "FAQ",
+      "icon": "❓",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Jak přidat novou službu?"
+        },
+        {
+          "type": "text",
+          "text": "Edituj <code>~/.systems.json</code>, přidej do <code>services</code> pole nový objekt s <code>name</code>, <code>systemd</code>, <code>user_service</code>, a volitelně <code>port</code>, <code>description</code>, <code>url_public</code>. Dashboard si to přečte při dalším refresh."
+        },
+        {
+          "type": "heading",
+          "text": "Jak vytvořit custom mód?"
+        },
+        {
+          "type": "text",
+          "text": "Přidej do <code>modes</code> pole objekt s <code>id</code>, <code>name</code>, <code>description</code>, a <code>check_cmd</code> (shell příkaz který vrátí exit code 0 pokud je ON). Příkaz se spustí s timeoutem 3 sekundy."
+        },
+        {
+          "type": "heading",
+          "text": "Refresh je pomalý / správi staré data"
+        },
+        {
+          "type": "text",
+          "text": "Auto-refresh je 5 sekund (v HTML <code>&lt;meta refresh&gt;</code>). Pokud chceš změnit interval, edituj řádek 22 v <code>dashboard.py</code>: <code>content=\"5\"</code> → <code>content=\"10\"</code> pro 10 sekund."
+        },
+        {
+          "type": "heading",
+          "text": "Jak zjistit, proč služba ukazuje 'unknown'?"
+        },
+        {
+          "type": "text",
+          "text": "Spustí ručně: <code>systemctl [--user] is-active {systemd_name}</code>. Pokud vrátí chybu, je to pravděpodobně špatné jméno unit, nebo user_service nastavení je špatně."
+        },
+        {
+          "type": "heading",
+          "text": "Mohu z dashboardu ovládat služby?"
+        },
+        {
+          "type": "text",
+          "text": "Ne — je to read-only monitoring. Pokud chceš restart, udělej to přes CLI: <code>systemctl --user restart backup-dashboard</code>. (Dashboard to pak stále zobrazí jako 'inactive' na 5 sekund, než se znovu spustí.)"
+        }
+      ]
+    }
+  ]
+}
