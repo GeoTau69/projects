@@ -18,6 +18,12 @@
 - ✅ Sidebar: web-edit teď má 📖 ikonu (tři projekty s docs: ai, backup-dashboard, web-edit)
 **Status:** ✅ WORKFLOW WORKS! Haiku zvládnul bez chyb.
 
+**Lessons learned:**
+- ❌ Neignoruj chyby z `build.py --check` — nejsou jen warningy
+- ❌ Neizumuj si custom fields v `access` — schema je striktní (jen local/lan/tailscale)
+- ✅ Validuj PŘED buildem — ušetří čas
+- ✅ Trap list z `AI_WORKFLOW.md` je přesný — opravdu funguje (entries vs items, Unicode)
+
 ### 2026-02-20 14:15 — Haiku session #2
 **Co:** Čtení handoff od Sonneta, potvrzení dass chápu workflow.
 - ✅ Přečetl jsem `docs/AI_WORKFLOW.md` — trap list, postup, checklist
