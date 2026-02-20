@@ -8,6 +8,18 @@
 
 ## 📝 SESSION LOG (nejnovější nahoře)
 
+### 2026-02-20 15:10 — Sonnet session #3 (sanitace systém)
+**Co:** Maintenance a metadata optimalizace — rolling window pro SESSION LOG a todo
+- ✅ Vytvořil `tools/sanitize.py` — CLI script s parametry --target/keep/days/dry-run/commit/json
+- ✅ Logika: MODEL.md SESSION LOG parsuje `### YYYY-MM-DD` záznamy, starší archivuje
+- ✅ Logika: todo.md hledá `**Status: HOTOVO**` backlog položky, archivuje
+- ✅ Archive: měsíční soubory v `archive/sessions-YYYY-MM.md` a `archive/todo-done-YYYY-MM.md`
+- ✅ Portál: Přidal `/maintenance` stránku s UI formulářem + `/api/sanitize` endpoint (GET dry-run, POST execute)
+- ✅ Sidebar: `🧹 Maintain` item (otevře /maintenance v nové záložce)
+- ✅ Rozšířil `docs/INFO.md` — bohatá sekce "Maintenance" pro uživatele (UI, CLI, příklady, FAQ)
+**Status:** ✅ Hotovo. Uživatel vidí management v portálu, AI agenty mají čisté soubory bez staré historie.
+**Timestamp:** 2026-02-20 15:10 CET
+
 ### 2026-02-20 15:00 — Haiku session #5 (dashboard docs — architektura)
 **Co:** Třetí test + rozšíření dokumentace pro dashboard projekt
 - ✅ Přečetl `dashboard/CLAUDE.md` + `dashboard.py` (single-file app, systemd monitoring)
