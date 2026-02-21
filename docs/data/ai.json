@@ -1,9 +1,9 @@
 {
   "project": "ai",
   "display_name": "AI Dev Agent Stack",
-  "version": "1.0.0",
-  "updated": "2026-02-20",
-  "description": "Komplexní sada nástrojů pro optimalizaci a správu práce s AI. Zahrnuje účetnictví tokenů, prompt cache, sémantické vyhledávání kódu, model routing a dokumentační pipeline.",
+  "version": "1.1.0",
+  "updated": "2026-02-21",
+  "description": "Komplexní sada nástrojů pro optimalizaci a správu práce s AI. Zahrnuje účetnictví tokenů, prompt cache, sémantické vyhledávání kódu, model routing, dokumentační pipeline a persistentní session systém.",
   "status": "active",
   "port": null,
   "tech": [
@@ -11,7 +11,8 @@
     "sqlite",
     "numpy",
     "ollama",
-    "anthropic-api"
+    "anthropic-api",
+    "markdown"
   ],
   "access": {
     "local": "http://localhost:8080?project=ai",
@@ -101,158 +102,64 @@
       "dependencies": [
         "jinja2"
       ],
-      "notes": "Šablona: docs/templates/project.html.j2. Schéma: docs/schema/doc_schema.json. Klíč pro seznamy je 'entries' (nikoli 'items' — conflict s Jinja2)."
+      "notes": "Klíčové pravidlo: seznam položek se zapisuje jako 'entries' (ne 'items' — Jinja2 conflict). Schéma: docs/schema/doc_schema.json."
     },
     {
-      "id": "model_router",
-      "name": "Model Routing",
-      "file": "_meta/token_tracker.py (ROUTING_RULES)",
-      "purpose": "Automatické rozhodnutí: kterou LLM použít pro danou operaci (local Ollama vs cloud Claude).",
+      "id": "persistence_system",
+      "name": "Persistence paměti",
+      "file": "memory/MEMORY.md + memory/session.md",
+      "purpose": "Cross-model persistentní session systém. Zachovává kontext napřích seseionami a modelů (Haiku ↔ Sonnet ↔ Opus).",
       "status": "stable",
       "public_methods": [
         {
-          "name": "route_model",
-          "params": "operation: str, model: str = 'auto'",
-          "returns": "str (endpoint URL)",
-          "description": "Vrátí konkrétní model dle ROUTING_RULES tabulky."
+          "name": "konec zvonec",
+          "params": "N/A — signální fráze",
+          "returns": "Tiché uložení stavu",
+          "description": "Trigger pro uložení MEMORY.md + MODEL.md SESSION LOG + git commit+push. Platí pro všechny modely."
         }
       ],
       "dependencies": [],
-      "notes": "Tabulka: doc_update→local, boilerplate→local, code_review→claude-sonnet, architecture→claude-opus. Mění se přepínáním LOCAL_MODEL v kódu."
+      "notes": "Auto-memory adresář: ~/.claude/projects/{hash}/memory/. MEMORY.md je auto-načítán Claudem při každé nové konverzaci. Max 200 řádků. SESSION LOG v MODEL.md je handoff dokument (versioned v git)."
     }
   ],
   "sections": [
     {
       "id": "prehled",
       "title": "Přehled",
-      "icon": "📚",
+      "icon": "📋",
       "blocks": [
         {
           "type": "text",
-          "text": "AI Dev Agent Stack je integrovaná sada nástrojů pro optimalizaci práce s AI v monorepo workspace. Automatizuje účetnictví tokenů (a jejich nákladů), deduplicní cacheování promptů, sémantické vyhledávání kódu a inteligentní model routing (automatický výběr mezi lokálním Ollama a cloudovým Claude)."
-        },
-        {
-          "type": "text",
-          "text": "Všechny nástroje jsou centrálně přístupné přes CLI <code>~/bin/agent</code> a Python API <code>call_api()</code>. Stavy se ukládají do SQLite databází v <code>~/.ai-agent/</code>."
+          "text": "AI Dev Agent Stack je integrovaný systém čtyř komponent: <code>token_tracker</code> pro účetnictví, <code>chroma_indexer</code> pro sémantické vyhledávání, <code>docs pipeline</code> pro generování dokumentace a <code>persistence systém</code> pro uchování kontextu napřích seseionami."
         },
         {
           "type": "heading",
-          "text": "4 hlavní pilíře"
+          "text": "Klíčové funkce"
+        },
+        {
+          "type": "list",
+          "entries": [
+            "Transparentní účetnictví tokenů s TTL cache pro Anthropic API",
+            "Sémantické vyhledávání kódu (SQLite + numpy, bez chromadb)",
+            "Automatický routing mezi Ollama (local, zdarma) a Claude API (cloud, placené)",
+            "AI generuje pouze JSON data, Python renderuje HTML přes Jinja2",
+            "Cross-model persistence: jeden model pokračuje kde skončil druhý"
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "Status implementace (2026-02-21)"
         },
         {
           "type": "table",
-          "headers": [
-            "Pilíř",
-            "Modul",
-            "Účel"
-          ],
+          "headers": ["Modul", "Status", "Soubor"],
           "rows": [
-            [
-              "<span class=\"badge badge-green\">💰 Finance</span>",
-              "Token Tracker",
-              "Sledování API nákladů — kolik stojí každé volání (input/output tokeny), model, projekt."
-            ],
-            [
-              "<span class=\"badge badge-yellow\">⚡ Výkon</span>",
-              "Prompt Cache",
-              "Znovupoužití identických promptů — uspořit tokeny a peníze (12.5–50% úspora)."
-            ],
-            [
-              "<span class=\"badge badge-blue\">🔍 Přesnost</span>",
-              "Sémantické vyhledávání",
-              "Nalezení relevantního kódu z přirozeného jazyka — bez BFS či fuzzy matchingu."
-            ],
-            [
-              "<span class=\"badge badge-purple\">🧠 Inteligence</span>",
-              "Model Routing",
-              "Automatické rozhodnutí: local LLM pro rychlé úlohy vs cloud Claude pro komplexní analýzu."
-            ]
-          ]
-        }
-      ]
-    },
-    {
-      "id": "slovnik",
-      "title": "Slovník pojmů (pro AI newcomery)",
-      "icon": "📖",
-      "blocks": [
-        {
-          "type": "heading",
-          "text": "Token — Co je to?"
-        },
-        {
-          "type": "card",
-          "variant": "info",
-          "title": "🔤 Token = Malá jednotka textu",
-          "text": "Claude a ostatní LLM modely nepracují přímo s textem — rozdělí ho na malé kusy zvané <strong>tokeny</strong>. Jeden token je zhruba 4 znaky anglického textu.",
-          "entries": [
-            "<strong>Příklad:</strong> Slovo 'hello' = ~1 token, věta 'Hello, how are you?' = ~6 tokenů",
-            "<strong>Účel:</strong> Jednotná jednotka pro měření délky promptu a výstupů",
-            "<strong>Cena:</strong> Každý input token stojí peníze (při cloudových LLM). Output token stojí více (je náročnější)"
-          ]
-        },
-        {
-          "type": "text",
-          "text": "Proto Stack sleduje input vs output tokeny — aby věděl, co drahého děláš."
-        },
-        {
-          "type": "heading",
-          "text": "Embedding — Co je to?"
-        },
-        {
-          "type": "card",
-          "variant": "info",
-          "title": "🧲 Embedding = Vektor reprezentace textu",
-          "text": "Embedding je seznam čísel (vektor), který reprezentuje <strong>smysl</strong> textu — ne jeho exaktní slova. Dva texty s podobným smyslem mají blízké embeddingy.",
-          "entries": [
-            "<strong>Příklad:</strong> 'psí zvíře' a 'pes' by měly blízké embeddingy",
-            "<strong>Výpočet:</strong> speciální model (nomic-embed-text) zpracuje text a vrátí vektor (seznam 768 čísel)",
-            "<strong>Používá se pro:</strong> sémantické vyhledávání — co má AI najít v kódu bez přesného matchování slov"
-          ]
-        },
-        {
-          "type": "heading",
-          "text": "Prompt Cache — Co je to?"
-        },
-        {
-          "type": "card",
-          "variant": "info",
-          "title": "💾 Prompt Cache = Uložení a znovupoužití promptů",
-          "text": "Pokud pošleš Claude <strong>stejný prompt dvakrát za sebou</strong>, druhý request je výrazně levnější (12.5–50% ušetřeno). Cache to dělá automaticky — nedáš si pozor.",
-          "entries": [
-            "<strong>Případ:</strong> 'Vygeneruj dokumentaci' — pokud se context (codebase) nemění, druhé volání je levnější",
-            "<strong>TTL:</strong> Čím déle jsou data stabilní, tím delší cache TTL (doc_update = 24h, code_review = 0h)",
-            "<strong>Výhoda:</strong> Ušetřit stovky dolarů za rok na větších projektech"
-          ]
-        },
-        {
-          "type": "heading",
-          "text": "Model Routing — Co je to?"
-        },
-        {
-          "type": "card",
-          "variant": "info",
-          "title": "🛣️ Model Routing = Inteligentní výběr LLM",
-          "text": "Ne všechny úlohy potřebují nejdražší model. Stack má <strong>tabulku rozhodnutí</strong>: pro doc_update použij levné lokální Ollama, pro architecture analysis použij výkonný Claude Opus.",
-          "entries": [
-            "<strong>Local (Ollama):</strong> Zdarma, běží na tvém stroji, rychlý, ale méně inteligentní",
-            "<strong>Cloud (Claude):</strong> Placený, ale velmi chytrý — více peněz za komplexní analýzu",
-            "<strong>Strategie:</strong> Automatické rozhodnutí — úspora peněz a času"
-          ]
-        },
-        {
-          "type": "heading",
-          "text": "Prompt Deduplication — Co je to?"
-        },
-        {
-          "type": "card",
-          "variant": "info",
-          "title": "🔀 Dedup = Detekce a znovupoužití identických promptů",
-          "text": "Pokud AI agent dostane požadavek, který <strong>už dřív dostal</strong> (stejný prompt, stejný context), tak vrátí uloženou odpověď místo nového API volání.",
-          "entries": [
-            "<strong>Jak to funguje:</strong> Vypočítej hash promptu → podívej se do cache → pokud je tam a není expirovaný → vrať starou odpověď",
-            "<strong>Úspora:</strong> Nula nákladů na API (jen databázový lookup)",
-            "<strong>Bezpečnost:</strong> Pokud je context citlivý, nastav TTL = 0 (vypni cache)"
+            ["Token účetnictví", "✅ HOTOVO", "_meta/token_tracker.py"],
+            ["Prompt cache / deduplication", "✅ HOTOVO", "_meta/token_tracker.py"],
+            ["Sémantický vyhledávač kódu", "✅ HOTOVO", "_meta/chroma_indexer.py"],
+            ["Model routing", "✅ HOTOVO", "_meta/token_tracker.py"],
+            ["Docs pipeline (JSON/Jinja2)", "✅ HOTOVO", "docs/build.py"],
+            ["Persistence paměti", "✅ HOTOVO", "memory/MEMORY.md + CLAUDE.md Golden Rule"]
           ]
         }
       ]
@@ -260,412 +167,27 @@
     {
       "id": "architektura",
       "title": "Architektura",
-      "icon": "🗂️",
+      "icon": "🏗️",
       "blocks": [
         {
-          "type": "text",
-          "text": "Stack tvoří několik vrstev, které spolu komunikují přes CLI a Python API:"
+          "type": "heading",
+          "text": "Komponenty"
         },
         {
           "type": "code",
           "lang": "text",
-          "text": "┌─────────────────────────────────────────────────────────────┐\n│                    USER INTERFACE                           │\n│  ~/bin/agent (CLI router)  +  Python: call_api()            │\n└──────────────────┬──────────────────────────────┬────────────┘\n                   │                              │\n       ┌───────────┴───────────┐        ┌────────┴─────────┐\n       │                       │        │                  │\n   ┌───▼──────┐          ┌─────▼──┐   ┌▼────────┐     ┌────▼────┐\n   │Financials│          │Caching │   │Semantic │     │Docs     │\n   │---------│          │--------│   │Search   │     │Pipeline │\n   │Logging   │          │Dedup   │   │------   │     │------   │\n   │Billing   │          │TTL     │   │Index    │     │JSON→HTML│\n   │Routing   │          │        │   │Query    │     │Jinja2   │\n   └─┬────────┘          └─┬──────┘   └────┬────┘     └────┬────┘\n     │ API calls saved        │ prompt hashes  │ embeddings │ static\n     │                        │                │            │ files\n     └────────────┬───────────┴────────────────┴────────────┘\n                  │\n         ┌────────▼─────────────────────────┐\n         │   ~/.ai-agent/                   │\n         │  ├─ tokens.db     (SQLite)       │\n         │  │  └─ API calls + cache         │\n         │  └─ code_index.db (SQLite)       │\n         │     └─ embeddingy + source code  │\n         │                                  │\n         │  Ollama (local)                  │\n         │  ├─ nomic-embed-text             │\n         │  └─ qwen2.5-coder:14b            │\n         │                                  │\n         │  External                        │\n         │  └─ Anthropic API (Claude)       │\n         └──────────────────────────────────┘"
-        },
-        {
-          "type": "heading",
-          "text": "Jak pracuje typické volání"
-        },
-        {
-          "type": "list",
-          "ordered": true,
-          "entries": [
-            "<strong>1. User zavolá:</strong> <code>call_api(project='backup-dashboard', operation='doc_update', model='auto', messages=[...])</code>",
-            "<strong>2. Routing:</strong> Stack se podívá do ROUTING_RULES — 'doc_update' → local (Ollama)",
-            "<strong>3. Cache lookup:</strong> Vypočítej hash promptu → podívej se do ~/.ai-agent/tokens.db",
-            "<strong>4. Hit/Miss?</strong> Pokud je v cache a není expirovaný → vrať starou odpověď (return). Pokud ne → pokračuj",
-            "<strong>5. API volání:</strong> Pošli prompt lokálnímu Ollama (free) nebo cloud Claude (placeno)",
-            "<strong>6. Logging:</strong> Ulož do tokens.db: input/output tokeny, cena, model, projekt, operace, TTL expiraci",
-            "<strong>7. Cache store:</strong> Ulož hash+odpověď do cache pro příští volání",
-            "<strong>8. Return:</strong> Vrať text uživateli"
-          ]
+          "text": "~/bin/agent  (router)\n    ├── log / billing / cache / route / init  →  _meta/token_tracker.py\n    └── index / search                         →  _meta/chroma_indexer.py\n\nDatabáze: ~/.ai-agent/\n    ├── tokens.db       — token log + prompt cache (SQLite)\n    └── code_index.db   — kódové chunky + numpy embeddingy (SQLite)\n\nOllama (lokální):\n    ├── nomic-embed-text  — embeddingy pro sémantické vyhledávání\n    └── qwen2.5-coder:14b — lokální LLM pro doc_update, boilerplate, info_sync\n\nPersistence: ~/.claude/projects/{hash}/memory/\n    ├── MEMORY.md       — auto-loaded při każdé session (volatile state)\n    └── session.md      — detailní session log"
         }
       ]
     },
     {
-      "id": "token-tracker",
-      "title": "Token Tracker — Účetnictví API",
+      "id": "token_tracker",
+      "title": "Token Tracker",
       "icon": "💰",
       "blocks": [
         {
           "type": "text",
-          "text": "Token Tracker sleduje <strong>každé API volání</strong> — kolik tokenů, jaký model, jaké náklady, k jakému projektu. Všechno se ukládá do SQLite databáze <code>~/.ai-agent/tokens.db</code>."
-        },
-        {
-          "type": "heading",
-          "text": "Ceny modelů (Anthropic)"
-        },
-        {
-          "type": "table",
-          "headers": [
-            "Model",
-            "Input cena",
-            "Output cena",
-            "Použití"
-          ],
-          "rows": [
-            [
-              "<code>claude-opus-4-6</code>",
-              "$15 / M tokenů",
-              "$75 / M tokenů",
-              "Nejlepší — komplexní analýza (architecture)"
-            ],
-            [
-              "<code>claude-sonnet-4-6</code>",
-              "$3 / M tokenů",
-              "$15 / M tokenů",
-              "Dobrý poměr ceny/výkonu — code review, debug"
-            ],
-            [
-              "<code>claude-haiku-4-5</code>",
-              "$0.80 / M tokenů",
-              "$4 / M tokenů",
-              "Nejlevnější — jednoduché úlohy"
-            ],
-            [
-              "<strong>Ollama (local)</strong>",
-              "$0",
-              "$0",
-              "Zdarma — běžné úlohy (doc_update, boilerplate)"
-            ]
-          ]
-        },
-        {
-          "type": "heading",
-          "text": "CLI příkazy"
-        },
-        {
-          "type": "card",
-          "variant": "info",
-          "title": "💾 Ruční záznam",
-          "code": "# Pro Claude Code sessions (netrackuje se automaticky)\nagent log --project backup-dashboard --operation doc_update \\\n  --model sonnet --in 5000 --out 1200 --notes \"Aktualizace dokumentace\""
-        },
-        {
-          "type": "card",
-          "variant": "info",
-          "title": "📊 Přehledy",
-          "code": "agent billing                # vše za všechny doby\nagent billing --today        # jen dnes\nagent billing --week         # posledních 7 dní\nagent billing --month        # posledních 30 dní\nagent billing --project backup-dashboard  # filtr\nagent billing --model sonnet # filtr modelu\nagent billing --top          # top 10 nejdražších operací"
-        },
-        {
-          "type": "heading",
-          "text": "Příklady nákladů"
-        },
-        {
-          "type": "list",
-          "entries": [
-            "<strong>Jednoduché:</strong> 2000 input + 500 output tokenů na Haiku = ~$0.004 (čtyři setiny centa)",
-            "<strong>Střední:</strong> 10k input + 3k output na Sonnet = ~$0.06 (šest setin centa)",
-            "<strong>Komplexní:</strong> 20k input + 8k output na Opus = ~$0.75 (75 centů za analysis)"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "prompt-cache",
-      "title": "Prompt Cache & Deduplication",
-      "icon": "⚡",
-      "blocks": [
-        {
-          "type": "text",
-          "text": "Prompt cache je mechanismus pro ušetření nákladů: pokud pošleš Claude <strong>stejný prompt vícekrát</strong>, druhý a následující requesty jsou <strong>50% levnější</strong> na input tokenech."
-        },
-        {
-          "type": "heading",
-          "text": "Jak funguje"
-        },
-        {
-          "type": "list",
-          "ordered": true,
-          "entries": [
-            "Vypočítej MD5 hash promptu (message.content + system)",
-            "Vyhledej v ~/.ai-agent/tokens.db: <code>SELECT * FROM cache WHERE hash=?</code>",
-            "Je tam? A není expirovaný (TTL)? → <strong>Vrať uloženou odpověď (0 API volání)</strong>",
-            "Není tam nebo je expirovaný? → Pošli do Claude/Ollama, ulož odpověď s TTL expirací"
-          ]
-        },
-        {
-          "type": "heading",
-          "text": "TTL (Time To Live) tabulka"
-        },
-        {
-          "type": "table",
-          "headers": [
-            "Operace",
-            "TTL",
-            "Důvod"
-          ],
-          "rows": [
-            [
-              "<code>doc_update</code>",
-              "24h",
-              "Dokumentace se mění zřídka"
-            ],
-            [
-              "<code>boilerplate</code>",
-              "48h",
-              "Šablony jsou stabilní"
-            ],
-            [
-              "<code>info_sync</code>",
-              "12h",
-              "Git info se změní během dne"
-            ],
-            [
-              "<code>code_review</code>",
-              "0 (vypnuto)",
-              "Vždy chceme čerstvou analýzu"
-            ],
-            [
-              "<code>architecture</code>",
-              "0 (vypnuto)",
-              "Architektura se mění — nechceme stará data"
-            ]
-          ]
-        },
-        {
-          "type": "heading",
-          "text": "CLI příkazy"
-        },
-        {
-          "type": "card",
-          "variant": "info",
-          "title": "Cache statistiky",
-          "code": "agent cache --stats\n# Výstup:\n# 📊 Cache Stats\n# Cached entries: 127\n# Size on disk: 4.2 MB\n# TTL distribution:\n#   24h: 45\n#   12h: 82"
-        },
-        {
-          "type": "card",
-          "variant": "info",
-          "title": "Cache management",
-          "code": "agent cache --list              # seznam všech cached entries\nagent cache --clear             # smazat expirované\nagent cache --clear --all       # smazat vše"
-        },
-        {
-          "type": "heading",
-          "text": "Praktický případ"
-        },
-        {
-          "type": "text",
-          "text": "Představ si, že generuješ dokumentaci pro projekt. First call: 10k input tokenů = $0.08 (Sonnet). Second call (stejný prompt, stejný context): <strong>5k tokenů</strong> (cache hit) = <strong>$0.04</strong>. Úspora: 50% — a stane se to automaticky."
-        }
-      ]
-    },
-    {
-      "id": "semantic-search",
-      "title": "Sémantické vyhledávání kódu",
-      "icon": "🔍",
-      "blocks": [
-        {
-          "type": "text",
-          "text": "Sémantické vyhledávání používá <strong>embeddingy</strong> (vektory) k nalezení relevantního kódu. Na rozdíl od keyword search ('grep') to rozumí <strong>smyslu</strong> kódu."
-        },
-        {
-          "type": "heading",
-          "text": "Typické scénáře"
-        },
-        {
-          "type": "list",
-          "entries": [
-            "User: <em>'Kde mám logiku pro retry'</em> → hledá \"retry\" ve všech .py souborech → nalezne třídu, která to implementuje",
-            "User: <em>'Co se stane, když se disk zapojí'</em> → hledá semanticky: mount, eject, plug → vrátí relevantní handler",
-            "User: <em>'Jak se synchronizují snapshoty'</em> → hledá btrfs send, sync, snapshot → vrátí správný modul"
-          ]
-        },
-        {
-          "type": "heading",
-          "text": "CLI příkazy"
-        },
-        {
-          "type": "card",
-          "variant": "info",
-          "title": "Indexování",
-          "code": "agent index                         # indexuj celý workspace\nagent index --project backup-dashboard  # jen jeden projekt\nagent index --diff                  # jen git-changed soubory\nagent index --force                 # ignoruj cache, reindex vše\nagent index --docs                  # zahrnout i .md soubory"
-        },
-        {
-          "type": "card",
-          "variant": "info",
-          "title": "Hledání",
-          "code": "agent search \"retry logika\"\nagent search \"záloha borg\" --project backup-dashboard\nagent search \"WebSocket\" --top 10\nagent search \"co projekt dělá\" --scope docs"
-        },
-        {
-          "type": "heading",
-          "text": "Jak funguje internally"
-        },
-        {
-          "type": "list",
-          "ordered": true,
-          "entries": [
-            "<strong>Indexování:</strong> Čti .py/.md soubory → chunking (per-function, per-section) → nomic-embed-text vrátí vektory → ulož do ~/.ai-agent/code_index.db",
-            "<strong>Vyhledávání:</strong> User zadá dotaz → nomic-embed-text → query vektor → cosine similarity proti všem stored embeddingům → top-N výsledky",
-            "<strong>Skórování:</strong> 0.75+ = zelená (výborně relevantní), 0.55–0.75 = žlutá (relevantní), &lt;0.55 = šedá (slabě)"
-          ]
-        },
-        {
-          "type": "card",
-          "variant": "warning",
-          "title": "⚠️ Chunking strategie",
-          "text": "Jak se kód rozděluje na vyhledávatelné kusy:",
-          "entries": [
-            "<strong>Python (.py):</strong> Per definition — každá <code>def</code> nebo <code>class</code> je jeden chunk",
-            "<strong>Markdown (.md):</strong> Per section — každý nadpis (#, ##) je jeden chunk",
-            "<strong>Ostatní:</strong> Sliding window — 60 řádků, overlap=10"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "model-routing",
-      "title": "Model Routing — Automatický výběr LLM",
-      "icon": "🧠",
-      "blocks": [
-        {
-          "type": "text",
-          "text": "Model Routing je <strong>rozhodovací tabulka</strong>, která říká: pro tuhle úlohu použij tohle. Cíl: <strong>ušetřit peníze bez ztráty kvality</strong>."
-        },
-        {
-          "type": "heading",
-          "text": "Routing tabulka"
-        },
-        {
-          "type": "table",
-          "headers": [
-            "Operace",
-            "Target",
-            "Model",
-            "Důvod"
-          ],
-          "rows": [
-            [
-              "<code>doc_update</code>",
-              "local",
-              "qwen2.5-coder:14b",
-              "Generování doc — strojé, Ollama zvládá"
-            ],
-            [
-              "<code>boilerplate</code>",
-              "local",
-              "qwen2.5-coder:14b",
-              "Šablony boilerplate — Ollama ma v 'paměti'"
-            ],
-            [
-              "<code>info_sync</code>",
-              "local",
-              "qwen2.5-coder:14b",
-              "Sync informací z git — lokální operace"
-            ],
-            [
-              "<code>code_review</code>",
-              "cloud",
-              "claude-sonnet-4-6",
-              "Detailní review — potřebujeme chytrý model"
-            ],
-            [
-              "<code>architecture</code>",
-              "cloud",
-              "claude-opus-4-6",
-              "Analýza architektury — nejnáročnější"
-            ],
-            [
-              "<code>debug_complex</code>",
-              "cloud",
-              "claude-sonnet-4-6",
-              "Řešení složitých bugů — Sonnet"
-            ],
-            [
-              "<code>_default</code>",
-              "cloud",
-              "claude-sonnet-4-6",
-              "Cokoliv jiného — safe choice"
-            ]
-          ]
-        },
-        {
-          "type": "heading",
-          "text": "Python API"
-        },
-        {
-          "type": "code",
-          "lang": "python",
-          "text": "from _meta.token_tracker import call_api\n\n# Uživatel řekne: \"Vygeneruj dokumentaci\"\nresponse = call_api(\n    project='backup-dashboard',\n    operation='doc_update',\n    model='auto',  # routing rozhodne za tebe\n    messages=[{'role': 'user', 'content': 'Vygeneruj...'}],\n)\n# V pozadí: routing → \"doc_update\" → local → Ollama → zdarma"
-        },
-        {
-          "type": "heading",
-          "text": "CLI příkazy"
-        },
-        {
-          "type": "card",
-          "variant": "info",
-          "title": "Zobrazit routing tabulku",
-          "code": "agent route --show\n# Výstup: tabelka s aktuálnými pravidly"
-        },
-        {
-          "type": "card",
-          "variant": "info",
-          "title": "Otestovat routing",
-          "code": "agent route --test doc_update\n# Výstup: 'doc_update' → local, model=qwen2.5-coder:14b"
-        },
-        {
-          "type": "heading",
-          "text": "Jak se mění"
-        },
-        {
-          "type": "list",
-          "entries": [
-            "Edituj <code>_meta/token_tracker.py</code>, sekce <code>ROUTING_RULES</code>",
-            "Změň LOCAL_MODEL na něco jiného (pokud máš Ollama)",
-            "Pushni do gitu"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "docs-pipeline",
-      "title": "Docs Pipeline — JSON → HTML",
-      "icon": "📝",
-      "blocks": [
-        {
-          "type": "text",
-          "text": "Docs Pipeline je <strong>dvoustupňový proces</strong>: (1) AI generuje JSON strukturu, (2) build.py renderuje statické HTML bez účasti AI."
-        },
-        {
-          "type": "heading",
-          "text": "Workflow"
-        },
-        {
-          "type": "list",
-          "ordered": true,
-          "entries": [
-            "<strong>AI vygeneruje:</strong> docs/data/PROJECT.json (strukturovaná dokumentace)",
-            "<strong>Validace:</strong> build.py ověří JSON proti doc_schema.json",
-            "<strong>Rendering:</strong> Jinja2 šablona docs/templates/project.html.j2 renderuje HTML",
-            "<strong>Output:</strong> Statický soubor docs/output/PROJECT.html",
-            "<strong>Serve:</strong> docserver.py na portu 8080 zobrazuje HTML"
-          ]
-        },
-        {
-          "type": "heading",
-          "text": "JSON Schema"
-        },
-        {
-          "type": "card",
-          "variant": "info",
-          "title": "Struktura dokumentu",
-          "text": "Každý docs/data/{projekt}.json má tyto fieldy:",
-          "entries": [
-            "<code>project</code> — ID projektu",
-            "<code>display_name</code> — zobrazovaný název",
-            "<code>updated</code> — datum poslední aktualizace (YYYY-MM-DD)",
-            "<code>status</code> — active/wip/planned/archived",
-            "<code>modules</code> — seznam kódových modulů (třídy, funkce, CLI commands)",
-            "<code>sections</code> — seznam dokumentačních sekcí (přehled, architektura, FAQ, ...)"
-          ]
+          "text": "SQLite účetnictví všech API volání + prompt cache + model routing. Centrální bod pro kontrolu nákladů na AI práci."
         },
         {
           "type": "heading",
@@ -674,80 +196,171 @@
         {
           "type": "code",
           "lang": "bash",
-          "text": "python build.py                              # build všechny projekty\npython build.py --project ai                 # jen 'ai' projekt\npython build.py --project ai --force         # ignoruj cache\npython build.py --check                      # jen validace JSON\npython build.py --project ai --output /tmp/ai.html  # custom output"
+          "text": "# Manuální záznam (pro Claude Code sessions)\nagent log --project X --operation doc_update --model sonnet --in 5000 --out 1200 [--notes \"...\"]\n\n# Přehledy\nagent billing                    # vše\nagent billing --today            # jen dnes\nagent billing --week             # posledních 7 dní\nagent billing --month            # posledních 30 dní\nagent billing --project X        # filtr projektu\nagent billing --model sonnet     # filtr modelu\nagent billing --top              # top operace dle ceny\n\n# Prompt cache\nagent cache --stats              # statistiky + TTL pravidla\nagent cache --list               # seznam uložených odpovědí\nagent cache --clear              # smazat expirované\nagent cache --clear --all        # smazat vše\n\n# Model routing\nagent route --show               # zobrazit routing tabulku\nagent route --test doc_update    # otestovat routing pro operaci\n\n# Init\nagent init                       # inicializovat ~/.ai-agent/ a DB"
         },
         {
           "type": "heading",
-          "text": "POZOR: klíč je 'entries', ne 'items'"
+          "text": "Model routing tabulka"
         },
         {
-          "type": "card",
-          "variant": "danger",
-          "title": "⚠️ Jinja2 conflict",
-          "text": "V JSON seznamech <strong>MUSÍ</strong> být klíč <code>\"entries\"</code>, ne <code>\"items\"</code>. <code>items</code> je rezervované slovo v Pythonu a způsobuje chybu v Jinja2.",
-          "code": "// ✗ ŠPATNĚ\n{\"type\": \"list\", \"items\": [\"item1\", \"item2\"]}\n\n// ✓ SPRÁVNĚ\n{\"type\": \"list\", \"entries\": [\"item1\", \"item2\"]}"
+          "type": "table",
+          "headers": ["Operace", "Cíl", "Model"],
+          "rows": [
+            ["doc_update", "local", "qwen2.5-coder:14b"],
+            ["boilerplate", "local", "qwen2.5-coder:14b"],
+            ["info_sync", "local", "qwen2.5-coder:14b"],
+            ["code_review", "cloud", "claude-sonnet-4-6"],
+            ["architecture", "cloud", "claude-opus-4-6"],
+            ["debug_complex", "cloud", "claude-sonnet-4-6"],
+            ["_default", "cloud", "claude-sonnet-4-6"]
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "Ceny modelů"
+        },
+        {
+          "type": "table",
+          "headers": ["Model", "Input", "Output"],
+          "rows": [
+            ["claude-opus-4-6", "$15/M", "$75/M"],
+            ["claude-sonnet-4-6", "$3/M", "$15/M"],
+            ["claude-haiku-4-5", "$0.80/M", "$4/M"],
+            ["Ollama (lokální)", "$0", "$0"]
+          ]
         }
       ]
     },
     {
-      "id": "use-cases",
-      "title": "Use Cases — praktické příklady",
-      "icon": "💡",
+      "id": "semantic_search",
+      "title": "Sémantické vyhledávání",
+      "icon": "🔍",
       "blocks": [
         {
+          "type": "text",
+          "text": "Indexování a vyhledávání kódu pomocí vektorových embeddingů. Stack: SQLite + numpy + nomic-embed-text přes Ollama HTTP. Kompatibilní s Python 3.14 (alternativa k chromadb)."
+        },
+        {
           "type": "heading",
-          "text": "Case 1: Dokumentace projektu"
+          "text": "CLI príkazy"
+        },
+        {
+          "type": "code",
+          "lang": "bash",
+          "text": "# Indexování\nagent index                          # celý workspace (mtime cache)\nagent index --project dashboard      # jen jeden projekt\nagent index --diff                   # jen git-changed soubory (git diff HEAD)\nagent index --force                  # ignoruj mtime, přeindexuj vše\nagent index --docs                   # indexuj i .md soubory\n\n# Vyhledávání\nagent search \"retry logika\"\nagent search \"záloha borg archiv\" --project backup-dashboard\nagent search \"WebSocket rooms\"  --top 10\nagent search \"co projekt dělá\" --scope docs    # hledá v .md souborech"
+        },
+        {
+          "type": "heading",
+          "text": "Chunking strategie"
+        },
+        {
+          "type": "table",
+          "headers": ["Typ souboru", "Strategie", "Chunk ="],
+          "rows": [
+            [".py", "Per definice", "jedna 'def' nebo 'class'"],
+            [".md", "Per sekce", "jeden '#' nebo '##' nadpis"],
+            ["ostatní", "Sliding window", "60 řádků, 10 overlap"]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "docs_pipeline",
+      "title": "Docs pipeline",
+      "icon": "📄",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "AI generuje <code>docs/data/{projekt}.json</code> (data-only), <code>build.py</code> renderuje HTML přes Jinja2 (bez AI). Tím se dramaticky snižují náklady — AI nemusí generovat HTML."
+        },
+        {
+          "type": "heading",
+          "text": "Příkazy"
+        },
+        {
+          "type": "code",
+          "lang": "bash",
+          "text": "python3 docs/build.py                              # všechny projekty\npython3 docs/build.py --project backup-dashboard   # jen jeden\npython3 docs/build.py --check                      # jen validace JSON\npython3 docs/build.py --force                      # ignoruj hash cache\npython3 docs/build.py --output /cesta/soubor.html  # vlastní výstup"
+        },
+        {
+          "type": "card",
+          "variant": "info",
+          "title": "Klíčové pravidlo",
+          "text": "Pole pro seznam položek v JSON blocích se nazývá 'entries' (nikoli 'items' — items je Pythonova dict metoda a Jinja2 ji zachytí jako getattr dříve než dict klíč)."
+        }
+      ]
+    },
+    {
+      "id": "persistence",
+      "title": "Persistence paměti",
+      "icon": "💾",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Třívrstvý systém zachovávající kontext napřích seseionami a modelů. Řešení problému ztráty kontextu po odhlášení z Claude Code."
+        },
+        {
+          "type": "heading",
+          "text": "Jak funguje"
+        },
+        {
+          "type": "text",
+          "text": "Jsou 3 vrstvy: (1) <code>CLAUDE.md</code> — master pravidla s Golden Rule (versioned v git), (2) <code>memory/</code> adresář — volatile session state auto-načítaný Claudem, (3) <code>MODEL.md</code> — handoff dokument pro AI (versioned v git)."
+        },
+        {
+          "type": "heading",
+          "text": "Signální fráze: 'konec zvonec'"
+        },
+        {
+          "type": "text",
+          "text": "Když uživatel napíše <code>konec zvonec</code>, jakýkoliv model (Haiku/Sonnet/Opus) tiše:"
         },
         {
           "type": "list",
           "ordered": true,
           "entries": [
-            "AI vygeneruje docs/data/backup-dashboard.json",
-            "<code>python build.py --project backup-dashboard</code>",
-            "HTML se zobrazí na http://localhost:8080",
-            "Cost tracking: 12k input + 4k output = ~$0.12 (Sonnet cache hit = ještě levnější)"
+            "Aktualizuje ~/.claude/projects/*/memory/MEMORY.md (aktuální úkol + poslední akce + next steps)",
+            "Přidá záznam do MODEL.md SESSION LOG",
+            "Commitne + pushne: git add MODEL.md && git commit && git push gitea main && git push github main",
+            "Napíše: 'Vše synchronizováno — můžeš se odhlásit.'"
           ]
         },
         {
           "type": "heading",
-          "text": "Case 2: Code Review automatizace"
+          "text": "Príští session"
         },
         {
-          "type": "list",
-          "ordered": true,
-          "entries": [
-            "Nový commit v gitu → Git hook → spustí 'agent search' + 'agent index --diff'",
-            "Vyhledej relevantní kód pomocí semantic search",
-            "Pošli do Claude Sonnet pro review (model routing: code_review → cloud)",
-            "Cache hit: pokud je to stejný typ review, druhý commit je 50% levnější"
+          "type": "text",
+          "text": "Nový model (jakýkoliv) se přihlásí → Claude Code auto-načte MEMORY.md → model vidí co se dělalo → pokračuje bez ztrát."
+        },
+        {
+          "type": "heading",
+          "text": "Soubory a jejich role"
+        },
+        {
+          "type": "table",
+          "headers": ["Soubor", "Umístění", "Role", "Kdo píše"],
+          "rows": [
+            ["CLAUDE.md", "/home/geo/projects/", "Master pravidla + golden rule", "Developer + AI"],
+            ["MEMORY.md", "~/.claude/projects/.../memory/", "Volatile session state", "Jakýkoliv model"],
+            ["session.md", "~/.claude/projects/.../memory/", "Detailní session log", "Jakýkoliv model"],
+            ["MODEL.md", "/home/geo/projects/", "AI handoff + architektura", "Jakýkoliv model"]
           ]
         },
         {
           "type": "heading",
-          "text": "Case 3: Monitoring nákladů"
+          "text": "Praktický příklad"
         },
         {
-          "type": "list",
-          "ordered": true,
-          "entries": [
-            "Každý měsíc spustit: <code>agent billing --month --top</code>",
-            "Vidět: které operace stojí nejvíce (architektura? velký context?)",
-            "Optimalizovat: snížit TTL cache pro levné operace, zvýšit pro drahé"
-          ]
+          "type": "code",
+          "lang": "text",
+          "text": "Session 1: Sonnet pracuje na dokumentaci\n  ↓ 'konec zvonec'\n  → MEMORY.md: 'Psáli jsme sekci Token Tracker, zbývá Routing'\n  → MODEL.md: 'Sonnet #4 — dokumentace AI projektu'\n\nSession 2: Haiku se přihlásí\n  ↓ MEMORY.md auto-load\n  ↓ Haiku vidí: 'Pokračuj v sekci Routing'\n  ✓ Bezpečně navazuje bez ztrát\n\nSession 3: Sonnet se vrátí\n  ↓ MEMORY.md stále zde\n  ↓ Vidí co Haiku udělal\n  ✓ Pokračuje dál"
         },
         {
-          "type": "heading",
-          "text": "Case 4: Lokální AI bez internetu"
-        },
-        {
-          "type": "list",
-          "ordered": true,
-          "entries": [
-            "Máš Ollama s qwen2.5-coder nainstalovaný",
-            "Všechny doc_update, boilerplate, info_sync běží <strong>lokálně zdarma</strong>",
-            "Pouze code_review a architecture jdou do cloudu (Claude)",
-            "Ušetříš: 70% nákladů, protože 70% operací je lokálních"
-          ]
+          "type": "card",
+          "variant": "warning",
+          "title": "⚠️ Zlaté pravidlo",
+          "text": "PŘED KONCEM JAKÉKOLIV SESSION řekni 'konec zvonec'. Bez tohoto kroku = kontext navždy ztracen."
         }
       ]
     },
@@ -758,243 +371,43 @@
       "blocks": [
         {
           "type": "heading",
-          "text": "Co je to Ollama?"
+          "text": "Otázka: Který model bych měl jakou operaci dát?"
         },
         {
           "type": "text",
-          "text": "Ollama je <strong>lokální LLM runtime</strong> — server, který běží na tvém stroji a nabízí AI modely (qwen, llama, mistral, ...). V tomto stacku se používá pro levné/rychlé operace."
+          "text": "Haiku: dokumentace, AI pipeline. Sonnet: vývoj, architektura, struktura, kód. Opus: dlouhé analýzy, komplexní architektura. Model routing v token_tracker.py to rozhoduje automaticky."
         },
         {
           "type": "heading",
-          "text": "Jak se zapnout Ollama?"
-        },
-        {
-          "type": "code",
-          "lang": "bash",
-          "text": "# 1. Stáhni Ollama (ollama.ai)\n# 2. Spusť daemon\nollama serve\n\n# 3. V jiném terminálů stáhni modely\nollama pull qwen2.5-coder:14b\nollama pull nomic-embed-text\n\n# 4. Zkontroluj\ncurl -s http://localhost:11434/api/tags | python3 -m json.tool"
-        },
-        {
-          "type": "heading",
-          "text": "Kolik zaplatím za API?"
+          "text": "Otázka: Jak se přihlásím bez ztráty kontextu?"
         },
         {
           "type": "text",
-          "text": "Záleží na <strong>typu operace</strong>. Pokud všechno běží na Ollama (local), zaplatíš <strong>$0</strong>. Pokud používáš Claude, zaplatíš dle modelu: Haiku = levné, Opus = drahé. Tracking: <code>agent billing</code>."
+          "text": "Řekni 'konec zvonec' PŘED odhlášením. Já to uložím. Příště když se přihlásíš, MEMORY.md bude tu a já hned vímu co se dělalo."
         },
         {
           "type": "heading",
-          "text": "Co se stane, když internet selže?"
+          "text": "Otázka: Kolik mě to bude stát?"
         },
         {
           "type": "text",
-          "text": "Operace routované na local (doc_update, boilerplate) budou fungovat. Operace na cloud (code_review, architecture) selžou s chybou. Alternativa: všechno routuj na Ollama v ROUTING_RULES."
+          "text": "Levné operace jdou na Ollama (zdarma). Drahé na Claude. Běž 'agent billing' a vidíš přesnou analýzu. Prompt cache (24h TTL) ušetří peníze na opakované dotazy."
         },
         {
           "type": "heading",
-          "text": "Jak smazat cache?"
-        },
-        {
-          "type": "code",
-          "lang": "bash",
-          "text": "agent cache --clear        # smazat expirované\nagent cache --clear --all  # smazat vše (VAROVÁNÍ: ztratíš úsporu)"
-        },
-        {
-          "type": "heading",
-          "text": "Mohu manuálně editovat JSON dokumenty?"
+          "text": "Otázka: Co když se mi cache nehodí?"
         },
         {
           "type": "text",
-          "text": "Ano, ale musí to odpovídat doc_schema.json. AI je primární zdroj (přesnější), ale malé opravy rukou jsou OK. Po editaci: <code>python build.py --project X --force</code>."
-        }
-      ]
-    },
-    {
-      "id": "setup",
-      "title": "Setup & Inicializace",
-      "icon": "⚙️",
-      "blocks": [
-        {
-          "type": "heading",
-          "text": "Povinné: Anthropic API klíč"
-        },
-        {
-          "type": "list",
-          "ordered": true,
-          "entries": [
-            "Jdi na <code>console.anthropic.com</code>",
-            "Vytvoř API klíč",
-            "Ulož do <code>~/.anthropic-api-key</code> nebo env <code>ANTHROPIC_API_KEY</code>"
-          ]
+          "text": "Operace 'code_review' a 'architecture' mají TTL=0 (cache vypnutý). Pro ostatní můžeš upravit CACHE_TTL v token_tracker.py."
         },
         {
           "type": "heading",
-          "text": "Volitelné: Ollama (pro lokální LLM)"
-        },
-        {
-          "type": "list",
-          "ordered": true,
-          "entries": [
-            "Stáhni <a href='https://ollama.ai'>Ollama</a> a spusť daemon",
-            "Stáhni modely: <code>ollama pull qwen2.5-coder:14b nomic-embed-text</code>",
-            "Ověř: <code>curl -s http://localhost:11434/api/tags</code>"
-          ]
-        },
-        {
-          "type": "heading",
-          "text": "Python balíčky"
-        },
-        {
-          "type": "code",
-          "lang": "bash",
-          "text": "pip install -U anthropic jinja2 jsonschema numpy"
-        },
-        {
-          "type": "heading",
-          "text": "Inicializace"
-        },
-        {
-          "type": "code",
-          "lang": "bash",
-          "text": "agent init\n# Vytvoří: ~/.ai-agent/\n#   ├─ tokens.db\n#   └─ code_index.db"
-        },
-        {
-          "type": "heading",
-          "text": "Spuštění services"
-        },
-        {
-          "type": "code",
-          "lang": "bash",
-          "text": "# docserver — port 8080\npython3 ~/projects/docs/docserver.py &\n\n# ověř\ncurl -s http://localhost:8080/api/projects | python3 -m json.tool"
-        }
-      ]
-    },
-    {
-      "id": "reference",
-      "title": "CLI Reference",
-      "icon": "⌨️",
-      "blocks": [
-        {
-          "type": "heading",
-          "text": "Token Tracker"
-        },
-        {
-          "type": "code",
-          "lang": "bash",
-          "text": "# Ruční záznam\nagent log --project X --operation doc_update --model sonnet --in 5000 --out 1200\n\n# Přehledy\nagent billing [--today|--week|--month|--top|--project X|--model M]\n\n# Cache\nagent cache [--stats|--list|--clear|--clear --all]\n\n# Routing\nagent route [--show|--test OPERACE]"
-        },
-        {
-          "type": "heading",
-          "text": "Semantic Search"
-        },
-        {
-          "type": "code",
-          "lang": "bash",
-          "text": "# Indexování\nagent index [--project NAME|--diff|--force|--docs]\n\n# Hledání\nagent search \"DOTAZ\" [--project X|--top N|--scope docs]"
-        },
-        {
-          "type": "heading",
-          "text": "Docs Pipeline"
-        },
-        {
-          "type": "code",
-          "lang": "bash",
-          "text": "cd ~/projects/docs\npython build.py [--project X|--check|--force|--output FILE]"
-        },
-        {
-          "type": "heading",
-          "text": "Init"
-        },
-        {
-          "type": "code",
-          "lang": "bash",
-          "text": "agent init  # vytvoří ~/.ai-agent/ + databáze"
-        }
-      ]
-    },
-    {
-      "id": "layers",
-      "title": "Vrstvitá vysvětlení (Beginner → Advanced)",
-      "icon": "📚",
-      "blocks": [
-        {
-          "type": "heading",
-          "text": "Vrstva 1: Co to je (pro úplného začátečníka)"
+          "text": "Otázka: Jak najdu starou session?"
         },
         {
           "type": "text",
-          "text": "Máš AI asistenta. Pokaždé, když si s ním povídáš, stojí to peníze — proto chceš vědět, <strong>kolik peněz jsi utratil</strong> a jak to <strong>zlevnit</strong>. AI Dev Agent Stack je taková účetní, která to za tebe dělá."
-        },
-        {
-          "type": "heading",
-          "text": "Vrstva 2: Jak se to používá"
-        },
-        {
-          "type": "text",
-          "text": "Místo přímého volání Claude API voláš <code>call_api()</code>. Ta funkce (1) ví, který model použít, (2) sleduje výdaje, (3) znovupoužívá staré odpovědi, (4) indexuje tvůj kód pro lepší hledání. Všechno automaticky."
-        },
-        {
-          "type": "heading",
-          "text": "Vrstva 3: Interní mechanismy"
-        },
-        {
-          "type": "text",
-          "text": "Interně Stack používá SQLite databáze pro logování, deduplicní cache s TTL, vektorové embeddingy pro sémantické vyhledávání a routing tabulku pro model selection. Vše je deterministické a auditovatelné."
-        },
-        {
-          "type": "heading",
-          "text": "Vrstva 4: Optimalizace a архітектура"
-        },
-        {
-          "type": "text",
-          "text": "Můžeš optimalizovat: zvýšit TTL pro operace, které se opakují (nižší náklady); změnit routing pro přidání nových modelů; vytvořit vlastní cache strategie dle domény."
-        }
-      ]
-    },
-    {
-      "id": "troubleshooting",
-      "title": "Řešení problémů",
-      "icon": "🔧",
-      "blocks": [
-        {
-          "type": "heading",
-          "text": "Chyba: ANTHROPIC_API_KEY není nastaven"
-        },
-        {
-          "type": "card",
-          "variant": "danger",
-          "title": "Řešení",
-          "code": "export ANTHROPIC_API_KEY=\"sk-ant-...\"\n# nebo ulož do ~/.anthropic-api-key\necho \"sk-ant-...\" > ~/.anthropic-api-key"
-        },
-        {
-          "type": "heading",
-          "text": "Chyba: Ollama není dostupný"
-        },
-        {
-          "type": "card",
-          "variant": "danger",
-          "title": "Řešení",
-          "code": "# Spusť daemon\nollama serve\n\n# Test\ncurl -s http://localhost:11434/api/tags"
-        },
-        {
-          "type": "heading",
-          "text": "Chyba: Database je locked"
-        },
-        {
-          "type": "card",
-          "variant": "warning",
-          "title": "Řešení",
-          "text": "SQLite lock se může stát, pokud běží více procesů. Zkus:",
-          "code": "# Odstran lock\nrm ~/.ai-agent/tokens.db-wal\nrm ~/.ai-agent/tokens.db-shm\n\n# Zkus znovu\nagent billing"
-        },
-        {
-          "type": "heading",
-          "text": "Chyba: JSON schéma se nevaliduje"
-        },
-        {
-          "type": "card",
-          "variant": "warning",
-          "title": "Řešení",
-          "code": "# Zkontroluj JSON\npython build.py --project ai --check\n\n# Oprav dle hlášek schéma\n# Nejčastěji: 'entries' místo 'items', chybějící povinná pole"
+          "text": "MODEL.md SESSION LOG obsahuje všechny session od začátku. Nebo běž 'agent log --project X' a vidíš SQL zápisy. Archiv: 'tools/sanitize.py --target sessions' pro starší logy."
         }
       ]
     }
