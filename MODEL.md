@@ -8,6 +8,12 @@
 
 ## 📝 SESSION LOG (nejnovější nahoře)
 
+### 2026-02-21b — Sonnet session #4b (konec zvonec — tichý výstup)
+**Co:** Upřesnění chování `konec zvonec` — tichý výstup bez průběhu
+- ✅ CLAUDE.md upraven: po signálu pouze "Vše synchronizováno — můžeš se odhlásit."
+- ✅ Otestováno a funguje
+**Timestamp:** 2026-02-21 CET
+
 ### 2026-02-21 — Sonnet session #4 (persistent session systém)
 **Co:** Implementace persistentního kontextu napřič seseionami a modely
 - ✅ Vytvořen `memory/MEMORY.md` — auto-načítán Claudem při každé nové konverzaci
