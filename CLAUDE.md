@@ -46,6 +46,28 @@ Workflow:
 - `MODEL.md` — AI-to-AI handoff: stav, architektura, session log
 - `todo.md` — centrální backlog
 - `docs/INFO.md` — portál průvodce (HTTP endpointy, příkazy, struktura) — viz **ℹ️ Info** v docs portálu (http://localhost:8080)
+- `~/.claude/projects/-home-geo-projects/memory/MEMORY.md` — **auto-načítán Claudem**, volatile session state (aktuální úkol, last action, next steps)
+
+## Zlaté pravidlo — Session persistence
+
+**POVINNÉ před každým ukončením session** (odhlášení, konec práce, ztráta kontextu):
+
+1. Aktualizuj `~/.claude/projects/-home-geo-projects/memory/MEMORY.md`:
+   - Co právě řešíme (aktuální úkol)
+   - Co bylo uděláno (poslední akce)
+   - Co zbývá (next steps)
+   - Případné otevřené problémy
+2. Aktualizuj `MODEL.md` SESSION LOG (nový záznam)
+3. Commitni do gitu: `git add -p && git commit`
+
+**Bez tohoto kroku = kontext ztracen navždy po odhlášení.**
+
+Rychlý příkaz pro konec session:
+```bash
+# 1. Uprav memory/MEMORY.md a MODEL.md
+# 2. Commitni
+git add MODEL.md && git add -p && git commit -m "Session log: [co jsme dělali]"
+```
 
 ## Příkazy workspace
 
