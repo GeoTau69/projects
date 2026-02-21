@@ -50,24 +50,26 @@ Workflow:
 
 ## Zlaté pravidlo — Session persistence
 
-**POVINNÉ před každým ukončením session** (odhlášení, konec práce, ztráta kontextu):
+### Signální fráze: `konec zvonec`
 
-1. Aktualizuj `~/.claude/projects/-home-geo-projects/memory/MEMORY.md`:
-   - Co právě řešíme (aktuální úkol)
-   - Co bylo uděláno (poslední akce)
-   - Co zbývá (next steps)
-   - Případné otevřené problémy
-2. Aktualizuj `MODEL.md` SESSION LOG (nový záznam)
-3. Commitni do gitu: `git add -p && git commit`
+Kdykoliv uživatel napíše **`konec zvonec`**, model (Haiku / Sonnet / Opus) **okamžitě**:
 
-**Bez tohoto kroku = kontext ztracen navždy po odhlášení.**
+1. Aktualizuje `~/.claude/projects/-home-geo-projects/memory/MEMORY.md`:
+   - Aktuální úkol (co řešíme)
+   - Poslední akce (co bylo uděláno)
+   - Next steps (co zbývá)
+   - Otevřené problémy / blockers
+2. Přidá záznam do `MODEL.md` SESSION LOG
+3. Commitne do gitu:
+   ```bash
+   git add MODEL.md && git commit -m "Session log: [shrnutí]"
+   git push gitea main && git push github main
+   ```
 
-Rychlý příkaz pro konec session:
-```bash
-# 1. Uprav memory/MEMORY.md a MODEL.md
-# 2. Commitni
-git add MODEL.md && git add -p && git commit -m "Session log: [co jsme dělali]"
-```
+**Účel:** Persistence kontextu napřič modely (Haiku → Sonnet → Opus) i po odhlášení.
+**Bez tohoto kroku = kontext ztracen navždy.**
+
+> Toto platí pro VŠECHNY modely. Každý model který dostane `konec zvonec` musí uložit stav za sebe.
 
 ## Příkazy workspace
 
