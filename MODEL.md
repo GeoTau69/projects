@@ -8,6 +8,17 @@
 
 ## 📝 SESSION LOG (nejnovější nahoře)
 
+### 2026-02-21 — Haiku session #6 (AI dokumentace — Persistence paměti)
+**Co:** Generování dokumentace se novou sekcí "Persistence paměti"
+- ✅ Vygenerován nový `docs/data/ai.json` z aktualizovaného `ai/CLAUDE.md`
+- ✅ Přidána sekce "Persistence paměti" — 6 subsection s detaily
+- ✅ Nový modul `persistence_system` v modules
+- ✅ Validace JSON (PASS) + build HTML (26 kB)
+- ✅ Commitnuto + pushnuté (Gitea + GitHub)
+- ✅ Live na http://192.168.0.101:8080/docs/ai
+**Otevřené:** Téma "automatizace přihlášení do Claude" — obsah neznámý
+**Timestamp:** 2026-02-21 CET
+
 ### 2026-02-21b — Sonnet session #4b (konec zvonec — tichý výstup)
 **Co:** Upřesnění chování `konec zvonec` — tichý výstup bez průběhu
 - ✅ CLAUDE.md upraven: po signálu pouze "Vše synchronizováno — můžeš se odhlásit."
