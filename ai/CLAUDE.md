@@ -3,7 +3,7 @@
 Sada nástrojů pro optimalizaci práce s AI v rámci workspace.
 Všechny nástroje jsou v `_meta/`, CLI dostupné globálně přes `~/bin/agent`.
 
-## Stav implementace (2026-02-19)
+## Stav implementace (2026-02-21)
 
 | Modul | Status | Soubor |
 |-------|--------|--------|
@@ -12,6 +12,7 @@ Všechny nástroje jsou v `_meta/`, CLI dostupné globálně přes `~/bin/agent`
 | Sémantický vyhledávač kódu | ✅ HOTOVO | `_meta/chroma_indexer.py` |
 | Model routing | ✅ HOTOVO | `_meta/token_tracker.py` |
 | Docs pipeline (JSON/Jinja2) | ✅ HOTOVO | `docs/build.py` |
+| **Persistence paměti** | ✅ HOTOVO | `memory/MEMORY.md` + `memory/session.md` + Golden Rule |
 
 ## Architektura
 
@@ -169,7 +170,182 @@ python3 docs/build.py --output /cesta/soubor.html  # vlastní výstup
 
 **Klíčové pravidlo:** Pole pro seznam položek v JSON blocích = `entries` (nikoli `items` — Jinja2 conflict).
 
-## TODO / Budoucí rozšíření
+## Persistence paměti — Cross-model kontextový přenos
+
+**Problém:** Claude Code ztrácí kontext po odhlášení. Při přepnutí mezi modely (Haiku → Sonnet → Opus) nebo mezi seseionami zmizí všechny informace o tom co se dělalo.
+
+**Řešení:** Třívrstvý systém persistence, který zachovává kontext napřích seseionami a modely.
+
+### Architektura persistence
+
+```
+VRSTVA 1: CLAUDE.md (master)     — stable, versioned, git
+         └─ Zlaté pravidlo: "Před koncem session ulož vše"
+         └─ Signální fráze: "konec zvonec" = trigger pro AI modely
+
+VRSTVA 2: memory/ adresář         — volatile, auto-loaded
+         ├─ MEMORY.md            ← AUTO-NAČÍTÁN Claudem při každé session
+         │  └─ Aktuální úkol, poslední akce, next steps (max 200 řádků)
+         └─ session.md           ← Detailní session log + template
+
+VRSTVA 3: MODEL.md               — handoff dokument
+         └─ SESSION LOG (nejnovější nahoře)
+         └─ Architektura, znalosti, problémy
+```
+
+### Soubory a jejich role
+
+| Soubor | Umístění | Role | Kdo píše | Kdo čte | Format |
+|--------|----------|------|---------|--------|--------|
+| **CLAUDE.md** | `/home/geo/projects/` | Master pravidla + golden rule | Developer + AI | Vždy auto-načten | Markdown |
+| **MEMORY.md** | `~/.claude/projects/.../memory/` | Volatile session state | **Jakýkoliv model** | **Vždy auto-načten** | Markdown |
+| **session.md** | `~/.claude/projects/.../memory/` | Detailní session log | Jakýkoliv model | Manuálně | Markdown |
+| **MODEL.md** | `/home/geo/projects/` | AI handoff + architektura | Jakýkoliv model | Čtení pro kontext | Markdown |
+
+### Mechanismus — jak to funguje
+
+#### 1. Normální session (bez `konec zvonec`)
+```
+Model pracuje na úkolu
+    → Když skončí sesseion, kontext ZMIZÍ
+    → Ale MEMORY.md už obsahuje poslední stav
+    → Nový model to načte a naváže
+```
+
+#### 2. Signální fráze `konec zvonec`
+```
+Uživatel: "konec zvonec"
+    ↓
+Model (Haiku/Sonnet/Opus):
+  1. Tiše aktualizuje MEMORY.md (aktuální úkol + poslední akce + next steps)
+  2. Tiše přidá záznam do MODEL.md SESSION LOG
+  3. Tiše commitne: git add MODEL.md && git commit && git push
+  4. Napíše: "Vše synchronizováno — můžeš se odhlásit."
+```
+
+#### 3. Příští session — auto-load
+```
+Uživatel se přihlásí (jakýkoliv model)
+    ↓
+Claude Code auto-načte: `~/.claude/projects/.../memory/MEMORY.md`
+    ↓
+Model vidí: "Poslední úkol byl..., poslední akce byla..., next steps jsou..."
+    ↓
+Model pokračuje kde skončil předchozí (bez ztrát)
+```
+
+### Praktický příklad — přepínání modelů
+
+```
+Session 1: Sonnet pracuje na dokumentaci
+  ↓ "konec zvonec"
+  → MEMORY.md: "Psáli jsme sekci 'Token Tracker', zbývá 'Routing'"
+  → MODEL.md: "Sonnet #4 — dokumentace AI projektu"
+
+Session 2: Haiku se přihlásí na stejný projekt
+  ↓ MEMORY.md je auto-načten
+  ↓ Haiku vidí: "Pokračuj v sekci 'Routing' pro dokumentaci"
+  ✓ Haiku bezpečně navazuje bez ztrát
+
+Session 3: Sonnet se vrátí
+  ↓ MEMORY.md je stále zde
+  ↓ Sonnet vidí co Haiku udělal ("Haiku skončil u 'Model Routing'")
+  ✓ Sonnet pokračuje dál
+```
+
+### Obsah MEMORY.md — co tam je
+
+```markdown
+## Aktuální úkol
+- Co právě řešíme (brief popis)
+- Status (In progress / Hotovo / Blokáno)
+
+## Poslední session
+- Co bylo uděláno (bullet list)
+- Problémy které jsme NEdořešili
+- Otevřené blockers
+
+## Next Steps
+- Co zbývá udělat (ordered list)
+
+## Otevřené problémy / Blockers
+- Věc 1
+- Věc 2
+
+## Klíčové soubory (quick ref)
+- CLAUDE.md — kde jsou pravidla
+- MODEL.md — kde je architektura
+
+## SESSION LOG (stručný)
+| Datum | Co | Status |
+| ... | ... | ... |
+```
+
+### Obsah MODEL.md SESSION LOG — co tam je
+
+```markdown
+### YYYY-MM-DD — [Model] session #N ([téma])
+**Co:**
+- Bod 1
+- Bod 2
+
+**Otevřené:**
+- Problém který se nevyřešil
+
+**Timestamp:** YYYY-MM-DD HH:MM CET
+```
+
+Každý nový záznam jde na ZAČÁTEK (nejnovější nahoře).
+
+### Golden Rule — Co MUSÍŠ dělat
+
+```
+PŘED KONCEM JAKÉKOLIV SESSION:
+
+1. Řekni "konec zvonec"
+2. Já (jakýkoliv model) automaticky:
+   → aktualizuji MEMORY.md
+   → přidám záznam do MODEL.md
+   → commitnu + pushnu
+3. Napíšu: "Vše synchronizováno — můžeš se odhlásit."
+4. Teprve pak se můžeš odhlásit
+```
+
+**Bez tohoto = kontext navždy ztracen.**
+
+### Praktické situace
+
+**Situace 1: Aktualizace dokumentace v session**
+```
+Sonnet: "Přidej sekci 'Persistence paměti' do ai/CLAUDE.md"
+[Sonnet to dělá]
+Uživatel: "konec zvonec"
+→ MEMORY.md: "Právě jsem přidal sekci persistence do ai/CLAUDE.md"
+→ MODEL.md: Nový záznam
+→ Git: Commit pushnutý
+```
+
+**Situace 2: Dlouhý úkol přes více session**
+```
+Session 1 (Sonnet): Napsal kód pro feature X
+  "konec zvonec" → MEMORY.md: "Kód hotov, zbývá testování"
+
+Session 2 (Haiku): Generuje testy
+  Auto-load MEMORY.md → ví co je hotovo
+  "konec zvonec" → MEMORY.md: "Testy napsány, zbývá review"
+
+Session 3 (Sonnet): Dělá code review
+  Auto-load MEMORY.md → ví co už je hotovo
+  "konec zvonec" → MEMORY.md: "Review hotov, ready to merge"
+```
+
+### Limity a poznámky
+
+- **Max 200 řádků v MEMORY.md** — musíš být stručný, není to archiv
+- **session.md nemusíš updatovat ručně** — je to spíš reference pro detailní logy
+- **MODEL.md je verzovaný v git** — to je dlouhodobá paměť
+- **Signál "konec zvonec" je case-sensitive** — přesně tak jak je psáno
+- **Platí pro všechny modely bez výjimky** — Haiku, Sonnet, Opus všichni musí dodržovat
 
 - [ ] Git post-commit hook: automatické `agent index --diff` po každém commitu
 - [ ] Komplexní dokumentace v tomto adresáři (popis konceptů, architektura, příklady)
