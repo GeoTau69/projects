@@ -8,6 +8,16 @@
 
 ## 📝 SESSION LOG (nejnovější nahoře)
 
+### 2026-02-21 — Sonnet session #4 (persistent session systém)
+**Co:** Implementace persistentního kontextu napřič seseionami a modely
+- ✅ Vytvořen `memory/MEMORY.md` — auto-načítán Claudem při každé nové konverzaci
+- ✅ Vytvořen `memory/session.md` — detailní session log + template
+- ✅ Přidáno Zlaté pravidlo do `CLAUDE.md` — povinné kroky před koncem session
+- ✅ Signální fráze `konec zvonec` — trigger pro uložení stavu napřič modely (Haiku/Sonnet/Opus)
+- ✅ Pushnuté do Gitea + GitHub
+**Otevřené:** Téma "automatizace přihlášení do Claude" — obsah neznámý, kontext byl ztracen po odhlášení
+**Timestamp:** 2026-02-21 CET
+
 ### 2026-02-20 15:10 — Sonnet session #3 (sanitace systém)
 **Co:** Maintenance a metadata optimalizace — rolling window pro SESSION LOG a todo
 - ✅ Vytvořil `tools/sanitize.py` — CLI script s parametry --target/keep/days/dry-run/commit/json
