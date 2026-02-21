@@ -52,19 +52,14 @@ Workflow:
 
 ### Signální fráze: `konec zvonec`
 
-Kdykoliv uživatel napíše **`konec zvonec`**, model (Haiku / Sonnet / Opus) **okamžitě**:
+Kdykoliv uživatel napíše **`konec zvonec`**, model (Haiku / Sonnet / Opus) **tiše provede**:
 
-1. Aktualizuje `~/.claude/projects/-home-geo-projects/memory/MEMORY.md`:
-   - Aktuální úkol (co řešíme)
-   - Poslední akce (co bylo uděláno)
-   - Next steps (co zbývá)
-   - Otevřené problémy / blockers
+1. Aktualizuje `~/.claude/projects/-home-geo-projects/memory/MEMORY.md`
 2. Přidá záznam do `MODEL.md` SESSION LOG
-3. Commitne do gitu:
-   ```bash
-   git add MODEL.md && git commit -m "Session log: [shrnutí]"
-   git push gitea main && git push github main
-   ```
+3. Commitne + pushne: `git push gitea main && git push github main`
+
+**Bez výpisu průběhu.** Po dokončení napíše pouze:
+> Vše synchronizováno — můžeš se odhlásit.
 
 **Účel:** Persistence kontextu napřič modely (Haiku → Sonnet → Opus) i po odhlášení.
 **Bez tohoto kroku = kontext ztracen navždy.**
