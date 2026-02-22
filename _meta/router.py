@@ -83,6 +83,10 @@ def select_backend(operation: str, backends: list['Backend']) -> 'Backend':
         for b in backends:
             if b.name == 'claude' and b.is_available():
                 return b
+        # Fallback na Ollama/qwen2.5-coder pokud Claude nedostupný
+        for b in backends:
+            if b.name == 'ollama' and b.is_available():
+                return b
 
     # Poslední záchrana — první dostupný
     for b in backends:
