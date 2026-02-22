@@ -29,42 +29,82 @@ Fedora server: LAN `192.168.0.101` · Tailscale `fedora` / `100.117.55.88`
 - Každý projekt má: `project.yaml` (metadata) + `CLAUDE.md` (kontext)
 - Backup soubory (`*.backup-*`) neverzovat · privilegované příkazy přes `sudo`
 
+### Stručnost výstupu — úspora output tokenů
+
+- Při editaci/vytváření souborů: jen stavový řádek `aktualizuji> soubor` nebo `vytvářím> soubor`
+- Žádný výpis obsahu který se zapisuje — uživatel si přečte soubor sám
+- Na začátku úkolu: bullet points co se bude měnit
+- Na konci úkolu: bullet points co se změnilo
+- Shrnutí, tabulky, návrhy variant, architektonická rozhodnutí: **zachovat plně**
+- Mechanický průběh (co kam kopíruji, jaký řádek měním): **vynechat**
+
 ## Dělba práce — Model routing
 
-| Model | Odpovědnost | Příklady |
-|-------|-------------|----------|
-| **Sonnet 4.6** | Vývoj, architektura, struktura, kód | Vytváření projektů, psaní MD souborů (CLAUDE.md), implementace features, refactoring |
-| **Haiku 4.5** | Dokumentace, AI pipeline | Generování dokumentace z CLAUDE.md → `docs/data/{projekt}.json` → HTML |
+| Model | Role | Odpovědnost | Kdy použít |
+|-------|------|-------------|------------|
+| **Opus 4.6** | Architekt | Návrh architektury, audit, složité problémy, specifikace | Nové systémy, architektonická rozhodnutí, review |
+| **Sonnet 4.6** | SW inženýr | Implementace dle specifikace, vývoj, refactoring, kód | Psaní kódu, úpravy souborů, mechanické operace |
+| **Haiku 4.5** | Dokumentarista | Generování dokumentace z CLAUDE.md → JSON → HTML | `docs/data/{projekt}.json` pipeline |
 
 Workflow:
-1. **Sonnet** vytvoří/aktualizuje projekt + `{projekt}/CLAUDE.md`
-2. **Haiku** čte CLAUDE.md → generuje `docs/data/{projekt}.json` → `build.py` renderuje HTML
-3. Dokumentace se automaticky zobrazí v portálu s 📖 ikonou
+1. **Opus** navrhne architekturu → zapíše specifikaci do MEMORY.md / MODEL.md
+2. **Sonnet** implementuje dle specifikace + aktualizuje `{projekt}/CLAUDE.md`
+3. **Haiku** čte CLAUDE.md → generuje `docs/data/{projekt}.json` → `build.py` renderuje HTML
+4. Dokumentace se automaticky zobrazí v portálu s 📖 ikonou
+
+Cenový princip: Opus ($75/M out) jen na architektonické rozhodování. Sonnet ($15/M out) na veškerou implementaci. Haiku ($4/M out) na dokumentaci.
 
 ## Kontextové soubory
 
-- `MODEL.md` — AI-to-AI handoff: stav, architektura, session log
-- `todo.md` — centrální backlog
-- `docs/INFO.md` — portál průvodce (HTTP endpointy, příkazy, struktura) — viz **ℹ️ Info** v docs portálu (http://localhost:8080)
-- `~/.claude/projects/-home-geo-projects/memory/MEMORY.md` — **auto-načítán Claudem**, volatile session state (aktuální úkol, last action, next steps)
+| Soubor | Načítání | Účel |
+|--------|----------|------|
+| `MODEL.md` | Manuálně | Session log (posledních 5 záznamů) + aktuální stav |
+| `todo.md` | Manuálně | Centrální backlog |
+| `docs/INFO.md` | Manuálně | Portál průvodce — viz **ℹ️ Info** (http://localhost:8080) |
+| `memory/MEMORY.md` | **Auto** | Volatile session state — aktuální úkol, next steps |
+
+**Auto-memory cesty** (závisí na CWD při startu Claude):
+- Start z `/home/geo/projects/` → `~/.claude/projects/-home-geo-projects/memory/MEMORY.md`
+- Start z `/home/geo/` → `~/.claude/projects/-home-geo/memory/MEMORY.md`
+- **Oba soubory synchronizovat** při `konec zvonec`
 
 ## Zlaté pravidlo — Session persistence
 
-### Signální fráze: `konec zvonec`
+<!-- DOKUMENTACE: Dvě signální fráze řídí ukládání kontextu mezi sessions/modely.
+     "štafeta" = lehký handoff (v rámci session, bez git). Typicky před /model switch.
+     "konec zvonec" = plný checkpoint (git commit+push). Před odhlášením.
+     Obě fráze jsou case-insensitive. Platí pro všechny modely bez výjimky. -->
 
-Kdykoliv uživatel napíše **`konec zvonec`**, model (Haiku / Sonnet / Opus) **tiše provede**:
+### Signální fráze
 
-1. Aktualizuje `~/.claude/projects/-home-geo-projects/memory/MEMORY.md`
-2. Přidá záznam do `MODEL.md` SESSION LOG
-3. Commitne + pushne: `git push gitea main && git push github main`
+| Fráze | Kdy | Co model udělá |
+|-------|-----|-----------------|
+| **`štafeta`** | Předání jinému modelu (před `/model`) | Aktualizuje oba MEMORY.md se shrnutím + specifikací pro dalšího. Bez git, bez sanitace. Napíše: *"Štafeta předána — přepni model."* |
+| **`konec zvonec`** | Konec práce, odhlášení | Sanitace + oba MEMORY.md + MODEL.md session log + git commit + push. Napíše: *"Vše synchronizováno — můžeš se odhlásit."* |
 
-**Bez výpisu průběhu.** Po dokončení napíše pouze:
-> Vše synchronizováno — můžeš se odhlásit.
+### `štafeta` — postup
 
-**Účel:** Persistence kontextu napřič modely (Haiku → Sonnet → Opus) i po odhlášení.
-**Bez tohoto kroku = kontext ztracen navždy.**
+<!-- Lehký handoff: žádný git, žádná sanitace. Cíl = předat kontext dalšímu modelu. -->
 
-> Toto platí pro VŠECHNY modely. Každý model který dostane `konec zvonec` musí uložit stav za sebe.
+1. Aktualizuje **oba** MEMORY.md (cesty viz tabulka v Kontextové soubory)
+   - Co jsem udělal (3-5 bodů)
+   - Co má příští model udělat (konkrétní specifikace)
+   - Rozpracované soubory (cesty)
+2. Napíše: *"Štafeta předána — přepni model."*
+
+### `konec zvonec` — postup
+
+<!-- Plný checkpoint: sanitace + git. Cíl = bezpečné odhlášení bez ztráty kontextu. -->
+
+1. Spustí sanitaci pokud MODEL.md > 100 řádků: `python3 tools/sanitize.py --target all --keep 5`
+2. Aktualizuje **oba** MEMORY.md
+3. Přidá 1 řádek do `MODEL.md` SESSION LOG (tabulkový formát)
+4. Commitne + pushne: `git push gitea main && git push github main`
+5. Napíše: *"Vše synchronizováno — můžeš se odhlásit."*
+
+**Bez výpisu průběhu** u obou frází — jen závěrečná hláška.
+
+> Platí pro VŠECHNY modely bez výjimky (Opus, Sonnet, Haiku).
 
 ## Příkazy workspace
 
