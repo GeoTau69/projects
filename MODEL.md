@@ -10,6 +10,7 @@
 
 | Datum | Model | Co | Status |
 |-------|-------|----|--------|
+| 2026-02-22 | Sonnet | Golden Rule: {projekt}/CLAUDE.md = Sonnet vlastnictví, Haiku pouze čte | ✅ |
 | 2026-02-22 | Haiku | AI docs: Golden Rules (3 pravidla), Orchestrator kapitola, ai/CLAUDE.md aktualizace | ✅ |
 | 2026-02-22 | Sonnet | Orchestrátor: billing.py, router.py, plugins/{base,claude,ollama}.py, semantic_cache.py, orchestrator.py, token_tracker refaktor + agent ask + Spinner | ✅ |
 | 2026-02-22 | Opus | Delta analýza, opravy nekonzistencí po Sonnet+Haiku | ✅ |
