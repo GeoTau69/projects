@@ -1,0 +1,320 @@
+{
+  "project": "docs",
+  "display_name": "Projects Documentation Server",
+  "version": "1.0.0",
+  "updated": "2026-02-22",
+  "description": "Centrální dokumentační web pro ~/projects/. Single-page app zobrazující strukturu projektů a obsah CLAUDE.md souborů.",
+  "status": "active",
+  "port": 8080,
+  "tech": ["python", "stdlib", "jinja2", "marked.js"],
+  "back_link": {
+    "href": "/",
+    "label": "🏠 Zpět na Index"
+  },
+  "access": {
+    "local": "http://localhost:8080",
+    "lan": "http://192.168.0.101:8080",
+    "tailscale": "http://fedora:8080"
+  },
+  "modules": [
+    {
+      "id": "docserver",
+      "name": "docserver.py",
+      "file": "docserver.py",
+      "purpose": "HTTP server pro dokumentační SPA — discovery projektů, API endpointy, live port monitoring.",
+      "status": "stable",
+      "public_methods": [
+        {
+          "name": "load_projects",
+          "description": "Načte všechny projekty z project.yaml souborů v ROOT adresáři."
+        },
+        {
+          "name": "check_port",
+          "params": "host: str, port: int",
+          "returns": "bool",
+          "description": "Ověří zda je port dostupný (pro live status ikony v UI)."
+        },
+        {
+          "name": "api_projects",
+          "returns": "dict",
+          "description": "JSON seznam projektů s live statusem portů — obsluhuje GET /api/projects."
+        },
+        {
+          "name": "api_md",
+          "params": "dir: str",
+          "returns": "str",
+          "description": "Raw markdown obsah CLAUDE.md — obsluhuje GET /api/md?dir=X."
+        }
+      ],
+      "dependencies": [],
+      "notes": "Single-file aplikace bez závislostí mimo stdlib. Path traversal check: candidate.resolve().parent == ROOT.resolve()"
+    },
+    {
+      "id": "build",
+      "name": "build.py",
+      "file": "build.py",
+      "purpose": "JSON → HTML renderer přes Jinja2. AI generuje pouze JSON, build.py renderuje HTML bez účasti AI.",
+      "status": "stable",
+      "public_methods": [
+        {
+          "name": "load_json",
+          "params": "project: str",
+          "returns": "dict",
+          "description": "Načte docs/data/{project}.json soubor."
+        },
+        {
+          "name": "validate_schema",
+          "params": "data: dict",
+          "returns": "bool",
+          "description": "Validuje JSON proti doc_schema.json pomocí jsonschema modulu."
+        },
+        {
+          "name": "compute_hash",
+          "params": "data: dict",
+          "returns": "str",
+          "description": "Vypočítá MD5 hash pro detekci změn — optimalizace, renderuj jen změněné projekty."
+        },
+        {
+          "name": "render_html",
+          "params": "data: dict",
+          "returns": "str",
+          "description": "Renderuje HTML přes Jinja2 šablonu project.html.j2."
+        }
+      ],
+      "dependencies": [],
+      "notes": "Závislost: jinja2 (povinná), jsonschema (volitelná pro --check). Interní hash cache v .build-state.json"
+    }
+  ],
+  "sections": [
+    {
+      "id": "pristup",
+      "title": "Přístupy",
+      "icon": "🌐",
+      "blocks": [
+        {
+          "type": "table",
+          "headers": ["Síť", "URL"],
+          "rows": [
+            ["Lokální", "http://localhost:8080"],
+            ["LAN", "http://192.168.0.101:8080"],
+            ["Tailscale", "http://fedora:8080 · http://100.117.55.88:8080"]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tech-stack",
+      "title": "Tech Stack",
+      "icon": "🛠️",
+      "blocks": [
+        {
+          "type": "list",
+          "entries": [
+            "<strong>Backend:</strong> Python stdlib <code>http.server</code> (žádné závislosti mimo jinja2)",
+            "<strong>Frontend:</strong> Inline HTML/CSS/JS (dark theme, monospace), marked.js CDN pro MD rendering",
+            "<strong>Discovery:</strong> Stejná logika jako <code>info-sync.py</code> — prochází <code>project.yaml</code> soubory"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "soubory",
+      "title": "Soubory",
+      "icon": "📁",
+      "blocks": [
+        {
+          "type": "code",
+          "lang": "txt",
+          "text": "docserver.py          — SPA web (CLAUDE.md viewer), port 8080\nbuild.py              — JSON → HTML renderer (Jinja2, bez AI), CLI tool\nproject.yaml          — metadata projektu\nCLAUDE.md             — tato dokumentace\n\nschema/\n  doc_schema.json     — JSON Schema pro validaci AI-generovaných dat\n\ntemplates/\n  project.html.j2     — Jinja2 šablona pro projektovou dokumentaci\n\ndata/\n  {projekt}.json      — AI generuje POUZE tyto soubory\n  _test.json          — testovací/ukázkový soubor\n\noutput/               — generované HTML soubory (build.py output, není verzováno)\n.build-state.json     — hash cache pro detekci změn (není verzováno)"
+        }
+      ]
+    },
+    {
+      "id": "http-endpointy",
+      "title": "HTTP Endpointy",
+      "icon": "🔌",
+      "blocks": [
+        {
+          "type": "table",
+          "headers": ["Endpoint", "Obsah"],
+          "rows": [
+            ["<code>GET /</code>", "HTML shell (SPA)"],
+            ["<code>GET /api/projects</code>", "JSON: seznam projektů s live statusem portů"],
+            ["<code>GET /api/md?dir=master</code>", "Raw markdown: ~/projects/CLAUDE.md"],
+            ["<code>GET /api/md?dir=X</code>", "Raw markdown: ~/projects/X/CLAUDE.md"],
+            ["<code>GET /docs/{projekt}</code>", "HTML dokumentace pro projekt (z docs/output/)"]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "prikazy",
+      "title": "Příkazy",
+      "icon": "⌨️",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Manuální spuštění (vývojový mód)"
+        },
+        {
+          "type": "code",
+          "lang": "bash",
+          "text": "python3 ~/projects/docs/docserver.py"
+        },
+        {
+          "type": "heading",
+          "text": "Systemd user service"
+        },
+        {
+          "type": "code",
+          "lang": "bash",
+          "text": "systemctl --user status docs\nsystemctl --user start docs\nsystemctl --user restart docs\njournalctl --user -u docs -f"
+        },
+        {
+          "type": "heading",
+          "text": "Build pipeline (Jinja2 rendering)"
+        },
+        {
+          "type": "code",
+          "lang": "bash",
+          "text": "cd ~/projects/docs\npython3 build.py                              # všechny projekty\npython3 build.py --project backup-dashboard   # jen jeden projekt\npython3 build.py --check                      # jen validace JSON schématu\npython3 build.py --force                      # ignoruj hash cache, rebuilduj\npython3 build.py --output /cesta/soubor.html  # vlastní výstup (migrace)"
+        }
+      ]
+    },
+    {
+      "id": "architektura",
+      "title": "Architektura",
+      "icon": "🏗️",
+      "blocks": [
+        {
+          "type": "list",
+          "entries": [
+            "<code>load_projects()</code> — discovery přes <code>project.yaml</code>, minimalistický YAML parser (bez yaml modulu)",
+            "<code>check_port()</code> — live status portu pro sidebar ikony",
+            "<code>api_projects()</code> → JSON s projekty + live statusem",
+            "<code>api_md(dir)</code> → raw MD text (ochrana path traversal: jen přímé podadresáře ROOT)",
+            "<code>DocsHandler</code> — routing: <code>/</code>, <code>/api/projects</code>, <code>/api/md</code>"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bezpecnost",
+      "title": "Bezpečnost",
+      "icon": "🔒",
+      "blocks": [
+        {
+          "type": "list",
+          "entries": [
+            "<strong>Path traversal:</strong> <code>candidate.resolve().parent == ROOT.resolve()</code> — odmítne <code>../../etc/passwd</code>",
+            "<strong>Žádné subprocess volání,</strong> žádné privilegované operace",
+            "<strong>XSS:</strong> HTML v JSON je trusted — jen CLAUDE.md data, ne user input"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "build-py-pipeline",
+      "title": "build.py — JSON → HTML Pipeline",
+      "icon": "🔨",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "AI generuje <code>data/{projekt}.json</code> → <code>build.py</code> renderuje HTML přes Jinja2 (bez AI)."
+        },
+        {
+          "type": "heading",
+          "text": "Princip — inkrementální build"
+        },
+        {
+          "type": "list",
+          "entries": [
+            "Načti <code>docs/data/{projekt}.json</code>",
+            "Validuj proti <code>schema/doc_schema.json</code>",
+            "Vypočítej MD5 hash",
+            "Je v cache? Beze-změn? → SKIP",
+            "Jinak: vyrenderuj Jinja2 → HTML",
+            "Ulož hash do <code>.build-state.json</code>"
+          ]
+        },
+        {
+          "type": "text",
+          "text": "<strong>Klíčové pravidlo:</strong> Pole pro seznam položek v JSON blocích = <code>entries</code> (nikoli <code>items</code> — <code>items</code> je reserved v Pythonu/Jinja2)."
+        }
+      ]
+    },
+    {
+      "id": "ai-workflow",
+      "title": "AI Workflow",
+      "icon": "🤖",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Před generováním dokumentace přečti: <code>docs/AI_WORKFLOW.md</code> — postup, trap list, checklist."
+        },
+        {
+          "type": "heading",
+          "text": "Krátký souhrn"
+        },
+        {
+          "type": "list",
+          "ordered": true,
+          "entries": [
+            "Přečti <code>{projekt}/CLAUDE.md</code> a <code>{projekt}/project.yaml</code>",
+            "Přečti <code>docs/schema/doc_schema.json</code> — schéma",
+            "Vygeneruj <code>docs/data/{projekt}.json</code> dle schématu",
+            "Validuj: <code>python3 build.py --project {projekt} --check</code>",
+            "Builduj: <code>python3 build.py --project {projekt} --force</code>",
+            "Ověř v prohlížeči: <code>http://localhost:8080/docs/{projekt}</code>",
+            "Commitni + pushni"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "konvence",
+      "title": "Konvence",
+      "icon": "📝",
+      "blocks": [
+        {
+          "type": "list",
+          "entries": [
+            "<code>docserver.py</code> — single-file, žádné závislosti mimo stdlib",
+            "<code>build.py</code> — Jinja2 + volitelně jsonschema",
+            "HTML/CSS/JS inline v <code>docserver.py</code> jako raw string",
+            "<code>marked.js</code> načten z CDN — fallback na plain text pokud offline",
+            "Kód česky, UTF-8"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cas-ci-problemy",
+      "title": "Časté problémy",
+      "icon": "⚠️",
+      "blocks": [
+        {
+          "type": "card",
+          "variant": "danger",
+          "title": "❌ items místo entries",
+          "text": "NEJČASTĚJŠÍ CHYBA. <code>items</code> je reserved Pythonu — Jinja2 vrátí <code>dict.items()</code> metodu.",
+          "code": "// Špatně\n{\"type\": \"list\", \"items\": [...]}\n// Správně\n{\"type\": \"list\", \"entries\": [...]}"
+        },
+        {
+          "type": "card",
+          "variant": "warning",
+          "title": "⚠️ Unicode uvozovky v JSON",
+          "text": "Používej pouze standardní uvozovky <code>\\\"</code> a <code>'</code>. Curly quotes (U+201E/U+201D) způsobí parse error.",
+          "code": "// Špatně: curly quotes (U+201E/U+201D)\n// Správně\n\"text\": \"Má v 'paměti' data\""
+        },
+        {
+          "type": "card",
+          "variant": "info",
+          "title": "ℹ️ Neplatný status",
+          "text": "Status pole musí mít specifické hodnoty.",
+          "code": "Projekt: active / wip / planned / archived\nModul: stable / beta / wip / deprecated"
+        }
+      ]
+    }
+  ]
+}
