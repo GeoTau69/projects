@@ -1,0 +1,5 @@
+name: agent-ui
+status: active
+tech: python
+port: 8100
+description: Webové rozhraní pro orchestrátor (Flask + HTMX). Dashboard stavů backendů, billing summary, request builder.

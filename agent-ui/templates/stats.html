@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% set active = 'stats' %}
+{% block title %}Statistiky — Agent UI{% endblock %}
+
+{% block content %}
+{% if error is defined and error %}
+  <div class="error-box">{{ error }}</div>
+{% endif %}
+
+<section>
+  <h2>Celkový přehled</h2>
+  {% set hit_rate = (summary.hits / summary.total * 100) | int if summary.total else 0 %}
+  <div>
+    <span class="stat">
+      <div class="stat-label">CELKEM REQUESTŮ</div>
+      <div class="stat-value">{{ summary.total or 0 }}</div>
+    </span>
+    <span class="stat">
+      <div class="stat-label">CACHE HIT RATE</div>
+      <div class="stat-value" style="color: {% if hit_rate > 30 %}#3fb950{% else %}#8b949e{% endif %};">
+        {{ hit_rate }}%
+      </div>
+    </span>
+    <span class="stat">
+      <div class="stat-label">CELKOVÉ NÁKLADY</div>
+      <div class="stat-value" style="color: {% if (summary.total_cost or 0) > 1 %}#f85149{% elif (summary.total_cost or 0) > 0 %}#d29922{% else %}#3fb950{% endif %};">
+        ${{ '%.4f' | format(summary.total_cost or 0) }}
+      </div>
+    </span>
+  </div>
+</section>
+
+{% if daily %}
+<section>
+  <h2>Posledních 7 dní</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Den</th>
+        <th>Volání</th>
+        <th>Cache hits</th>
+        <th>Hit rate</th>
+        <th>Tokeny in</th>
+        <th>Tokeny out</th>
+        <th>Náklady</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for d in daily %}
+      {% set dr = (d.cache_hits / d.calls * 100) | int if d.calls else 0 %}
+      <tr>
+        <td class="hi">{{ d.day }}</td>
+        <td>{{ d.calls }}</td>
+        <td style="color: #d29922;">{{ d.cache_hits }}</td>
+        <td style="color: {% if dr > 30 %}#3fb950{% else %}#484f58{% endif %};">{{ dr }}%</td>
+        <td>{{ '{:,}'.format(d.tokens_in | int) }}</td>
+        <td>{{ '{:,}'.format(d.tokens_out | int) }}</td>
+        <td style="color: {% if (d.cost or 0) > 0.5 %}#f85149{% elif (d.cost or 0) > 0 %}#d29922{% else %}#484f58{% endif %};">
+          ${{ '%.4f' | format(d.cost or 0) }}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+{% if history %}
+<section>
+  <h2>Poslední requesty</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Čas</th>
+        <th>Projekt</th>
+        <th>Operace</th>
+        <th>Model / Backend</th>
+        <th>In</th>
+        <th>Out</th>
+        <th>Cena</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in history %}
+      {% if r.model.startswith('claude-code/') %}
+        {% set b_color = '#3fb950' %}
+        {% set b_label = 'Pro' %}
+        {% set m_label = r.model.replace('claude-code/', '') %}
+      {% elif r.model.startswith('ollama/') %}
+        {% set b_color = '#58a6ff' %}
+        {% set b_label = 'Ollama' %}
+        {% set m_label = r.model.replace('ollama/', '') %}
+      {% else %}
+        {% set b_color = '#d29922' %}
+        {% set b_label = 'API' %}
+        {% set m_label = r.model %}
+      {% endif %}
+      <tr>
+        <td style="color:#484f58; white-space:nowrap;">{{ r.timestamp[:16] }}</td>
+        <td>{{ r.project }}</td>
+        <td class="hi">{{ r.operation }}</td>
+        <td>
+          <span style="color:{{ b_color }}; font-size:0.7rem;">{{ b_label }}</span>
+          <span style="margin-left:0.3rem;">{{ m_label }}</span>
+        </td>
+        <td>{{ r.tokens_in }}</td>
+        <td>{{ r.tokens_out }}</td>
+        <td style="color: {% if (r.cost_usd or 0) > 0 %}#d29922{% else %}#484f58{% endif %};">
+          ${{ '%.5f' | format(r.cost_usd or 0) }}
+        </td>
+        <td>
+          {% if r.cache_hit %}
+            <span style="color:#d29922; font-size:0.7rem;">⚡ cache</span>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% else %}
+  <div style="color:#484f58; font-size:0.85rem;">Zatím žádné záznamy.</div>
+{% endif %}
+
+{% endblock %}

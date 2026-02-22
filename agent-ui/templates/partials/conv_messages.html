@@ -1,0 +1,52 @@
+{% for msg in msgs %}
+  {% if msg.is_template %}
+    <div style="background:#1c2128; border:1px solid #30363d; border-left:3px solid #58a6ff; border-radius:3px; padding:0.5rem 0.75rem; margin-bottom:0.5rem;">
+      <div style="color:#58a6ff; font-size:0.7rem; letter-spacing:2px; margin-bottom:0.3rem;">ŠABLONA</div>
+      <div style="color:#8b949e; font-size:0.8rem; white-space:pre-wrap;">{{ msg.content }}</div>
+    </div>
+  {% elif msg.role == 'user' %}
+    <div style="background:#161b22; border:1px solid #21262d; border-radius:3px; padding:0.5rem 0.75rem; margin-bottom:0.5rem;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:0.3rem;">
+        <span style="color:#3fb950; font-size:0.7rem; letter-spacing:2px;">TY</span>
+        <span style="color:#484f58; font-size:0.7rem;">{{ msg.timestamp[:16] }}</span>
+      </div>
+      <div style="white-space:pre-wrap; font-size:0.85rem;">{{ msg.content }}</div>
+    </div>
+  {% elif msg.role == 'assistant' %}
+    {% if msg.model and msg.model.startswith('claude-code/') %}
+      {% set b_color = '#3fb950' %}{% set b_label = 'Pro' %}
+    {% elif msg.model and msg.model.startswith('ollama/') %}
+      {% set b_color = '#58a6ff' %}{% set b_label = 'Ollama' %}
+    {% else %}
+      {% set b_color = '#d29922' %}{% set b_label = 'API' %}
+    {% endif %}
+    <div style="background:#0d1117; border:1px solid #21262d; border-left:3px solid {{ b_color }}; border-radius:3px; padding:0.5rem 0.75rem; margin-bottom:0.75rem; margin-left:1rem;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:0.3rem;">
+        <span style="color:{{ b_color }}; font-size:0.7rem; letter-spacing:2px;">{{ b_label }} · {{ msg.model }}</span>
+        <span style="color:#484f58; font-size:0.7rem;">
+          {{ msg.timestamp[:16] }}
+          {% if msg.response_time_ms %}· {{ msg.response_time_ms }}ms{% endif %}
+          {% if msg.tokens_out %}· {{ msg.tokens_out }} tok out{% endif %}
+          {% if msg.cost_usd and msg.cost_usd > 0 %}· ${{ '%.5f' | format(msg.cost_usd) }}{% endif %}
+        </span>
+      </div>
+      <div style="white-space:pre-wrap; font-size:0.85rem; color:#e6edf3;">{{ msg.content }}</div>
+    </div>
+  {% endif %}
+{% endfor %}
+
+{% if summaries %}
+<div style="border-top:1px solid #21262d; padding-top:0.75rem; margin-top:0.5rem;">
+  <div style="color:#484f58; font-size:0.7rem; letter-spacing:2px; margin-bottom:0.5rem;">SOUHRNY</div>
+  {% for s in summaries %}
+  <div style="background:#1c2128; border:1px solid #30363d; border-radius:3px; padding:0.5rem 0.75rem; margin-bottom:0.4rem; font-size:0.8rem;">
+    <div style="display:flex; gap:1rem; margin-bottom:0.3rem; color:#484f58;">
+      <span style="color:#d29922;">{{ s.model }}</span>
+      <span>{{ s.word_count }} slov / {{ s.char_count }} znaků</span>
+      <span>{{ s.gen_time_ms }}ms</span>
+    </div>
+    <div style="color:#8b949e; white-space:pre-wrap;">{{ s.content }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}

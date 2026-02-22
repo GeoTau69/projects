@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% set active = 'dashboard' %}
+{% block title %}Dashboard — Agent UI{% endblock %}
+
+{% block content %}
+<section>
+  <h2>Backendy</h2>
+  <div id="status-panel"
+       hx-get="/status"
+       hx-trigger="load, every 10s"
+       hx-target="#status-panel"
+       hx-swap="innerHTML">
+    <div style="color: #484f58; font-size: 0.85rem;">Načítám…</div>
+  </div>
+</section>
+
+<section>
+  <h2>Paměť</h2>
+  <div id="memory-panel"
+       hx-get="/memory"
+       hx-trigger="load, every 15s"
+       hx-target="#memory-panel"
+       hx-swap="innerHTML">
+    <div style="color: #484f58; font-size: 0.85rem;">Načítám…</div>
+  </div>
+</section>
+
+<section>
+  <h2>Billing dnes</h2>
+  {% if billing.get('error') %}
+    <div class="error-box">{{ billing['error'] }}</div>
+  {% else %}
+    <div>
+      <span class="stat">
+        <div class="stat-label">CELKEM</div>
+        <div class="stat-value">{{ billing.total_calls or 0 }}</div>
+      </span>
+      <span class="stat">
+        <div class="stat-label">REÁLNÁ API</div>
+        <div class="stat-value">{{ billing.real_calls or 0 }}</div>
+      </span>
+      <span class="stat">
+        <div class="stat-label">CACHE HITS</div>
+        <div class="stat-value">{{ billing.cache_hits or 0 }}</div>
+      </span>
+      <span class="stat">
+        <div class="stat-label">TOKENY IN</div>
+        <div class="stat-value">{{ '{:,}'.format(billing.total_in | int) }}</div>
+      </span>
+      <span class="stat">
+        <div class="stat-label">TOKENY OUT</div>
+        <div class="stat-value">{{ '{:,}'.format(billing.total_out | int) }}</div>
+      </span>
+      <span class="stat">
+        <div class="stat-label">NÁKLADY</div>
+        <div class="stat-value" style="color: {% if (billing.total_cost or 0) > 0.5 %}#f85149{% elif (billing.total_cost or 0) > 0 %}#d29922{% else %}#3fb950{% endif %}">
+          ${{ '%.4f' | format(billing.total_cost or 0) }}
+        </div>
+      </span>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

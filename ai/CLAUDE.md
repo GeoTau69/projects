@@ -27,9 +27,22 @@ Databáze: ~/.ai-agent/
     └── code_index.db   — kódové chunky + numpy embeddingy (SQLite)
 
 Ollama (lokální):
-    ├── nomic-embed-text  — embeddingy pro sémantické vyhledávání
-    └── qwen2.5-coder:14b — lokální LLM pro doc_update, boilerplate, info_sync
+    ├── nomic-embed-text  — embeddingy pro sémantické vyhledávání + semantic_cache
+    ├── qwen2.5-coder:14b — aktivní LOCAL_MODEL (routing: doc_update, boilerplate, info_sync)
+    └── deepseek-coder:33b — dostupný, zatím nenakonfigurován v routeru
 ```
+
+## Ollama — instalace a modely
+
+Běží na `http://localhost:11434`. Detekce dostupnosti: HTTP HEAD na `/`.
+
+| Model | Velikost | Použití | Status |
+|-------|----------|---------|--------|
+| `nomic-embed-text:latest` | 274 MB | Embeddingy (semantic_cache, chroma_indexer) | ✅ aktivní |
+| `qwen2.5-coder:14b` | 9.0 GB | LOCAL_MODEL — doc_update, boilerplate, info_sync | ✅ aktivní |
+| `deepseek-coder:33b` | 18 GB | Dostupný, nenakonfigurován v ROUTING_RULES | ⚪ rezerva |
+
+Změna aktivního lokálního modelu: upravit `LOCAL_MODEL` v `_meta/router.py`.
 
 ## Token Tracker (`_meta/token_tracker.py`)
 

@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% set active = 'ask' %}
+{% block title %}Dotaz — Agent UI{% endblock %}
+
+{% block content %}
+
+{# ── Aktivní konverzace info ── #}
+{% if active_conv %}
+<div style="background:#161b22; border:1px solid #30363d; border-radius:3px; padding:0.5rem 1rem; margin-bottom:1rem; display:flex; align-items:center; gap:1rem; font-size:0.85rem;">
+  <span style="color:#484f58;">Konverzace:</span>
+  <span style="color:#e6edf3;">{{ active_conv.name or '(bez názvu) #' ~ active_conv.id }}</span>
+  {% if active_conv.is_closed %}
+    <span class="badge badge-warn">UZAVŘENA</span>
+  {% else %}
+    <span class="badge badge-ok">AKTIVNÍ</span>
+  {% endif %}
+  <span style="color:#484f58; margin-left:auto;">
+    <a href="/conversations/{{ active_conv.id }}/messages"
+       hx-get="/conversations/{{ active_conv.id }}/messages"
+       hx-target="#conv-history"
+       hx-swap="innerHTML">{{ conv_messages | length }} zpráv</a>
+  </span>
+  {% if not active_conv.is_closed %}
+  <form method="post" action="/conversations/{{ active_conv.id }}/close" style="margin:0;">
+    <button type="submit" style="background:#3d1414; color:#f85149; font-size:0.75rem; padding:2px 8px; margin:0;">✕ Konec konverzace</button>
+  </form>
+  {% endif %}
+</div>
+{% endif %}
+
+<section>
+  <h2>Request builder</h2>
+  <form hx-post="/ask"
+        hx-target="#response-area"
+        hx-swap="innerHTML"
+        hx-indicator="#spinner"
+        hx-on:htmx:before-request="updateSpinner()">
+
+    {# ── Řádek 1: Konverzace + Šablona ── #}
+    <div class="grid-2" style="margin-bottom:0.75rem;">
+      <div class="form-row">
+        <label>Konverzace</label>
+        <select name="conv_id" id="conv_select"
+                hx-get="/conversations/{id}/context"
+                hx-target="#conv-info"
+                hx-trigger="change"
+                onchange="this.form.action='/ask?conv='+this.value; loadConvContext(this.value)">
+          <option value="">— bez konverzace —</option>
+          {% for c in conversations %}
+          <option value="{{ c.id }}"
+            {% if active_conv and active_conv.id == c.id %}selected{% endif %}>
+            {% if c.is_closed %}✕{% else %}●{% endif %}
+            {{ c.name or '(bez názvu) #' ~ c.id }}
+            ({{ c.msg_count }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Šablona <span style="color:#484f58; font-size:0.75rem;">(system prompt)</span></label>
+        <select name="template_id">
+          <option value="">— bez šablony —</option>
+          {% for t in templates %}
+          <option value="{{ t.id }}">{{ t.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    {# ── Souhrn (pro uzavřenou konverzaci) ── #}
+    {% if active_conv and active_conv.is_closed and summaries %}
+    <div class="form-row">
+      <label>Kontext (souhrn uzavřené konverzace)</label>
+      <select name="summary_id">
+        <option value="">— načíst plnou historii —</option>
+        {% for s in summaries %}
+        <option value="{{ s.id }}">
+          {{ s.model }} · {{ s.word_count }} slov / {{ s.char_count }} znaků
+          ({{ s.gen_time_ms }}ms)
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+
+    {# ── Prompt ── #}
+    <div class="form-row">
+      <label>Prompt</label>
+      <textarea name="prompt" id="prompt_input" rows="6"
+                placeholder="Zadej dotaz…">{% if unanswered %}{{ unanswered.content }}{% endif %}</textarea>
+      {% if unanswered %}
+      <div style="color:#d29922; font-size:0.75rem; margin-top:0.3rem;">
+        ⚠ Předchozí dotaz bez odpovědi byl načten automaticky.
+      </div>
+      {% endif %}
+    </div>
+
+    {# ── Řádek 2: Operace + Model ── #}
+    <div class="grid-2">
+      <div class="form-row">
+        <label>Operace <span style="color:#484f58; font-size:0.75rem;">(model + cache)</span></label>
+        <select name="operation">
+          <option value="_default">výchozí  (Sonnet, cache 24h)</option>
+          {% for op in operations %}
+          <option value="{{ op.value }}">{{ op.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Model</label>
+        <select name="model">
+          <option value="auto">auto (dle operace)</option>
+          <optgroup label="── Claude ──">
+            <option value="sonnet">sonnet  (claude-sonnet-4-6)</option>
+            <option value="opus">opus  (claude-opus-4-6)</option>
+            <option value="haiku">haiku  (claude-haiku-4-5)</option>
+          </optgroup>
+          <optgroup label="── Ollama lokální ──">
+            <option value="local">qwen2.5-coder:14b</option>
+            <option value="deepseek">deepseek-coder:33b</option>
+          </optgroup>
+        </select>
+      </div>
+    </div>
+
+    {# ── Řádek 3: Backend + Projekt ── #}
+    <div class="grid-2">
+      <div class="form-row">
+        <label>Backend</label>
+        <select name="backend_force">
+          <option value="auto">auto  (Pro → API → Ollama)</option>
+          <option value="claude-code">Claude Code  (Pro licence)</option>
+          <option value="claude-api">Claude API  (pay-as-you-go)</option>
+          <option value="ollama">Ollama  (lokální)</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Projekt (billing)</label>
+        <input type="text" name="project" value="agent-ui" style="max-width:200px;">
+      </div>
+    </div>
+
+    <button type="submit">&#9654; Odeslat</button>
+    <form method="post" action="/conversations/new" style="display:inline; margin-left:1rem;">
+      <button type="submit" style="background:#0d4429; color:#3fb950;">+ Nová konverzace</button>
+    </form>
+
+    <div id="spinner" class="htmx-indicator">
+      <span id="spinner-text">&#10227; Zpracovává…</span>
+    </div>
+  </form>
+</section>
+
+{# ── Historie konverzace ── #}
+{% if active_conv and conv_messages %}
+<section>
+  <h2>Historie konverzace</h2>
+  <div id="conv-history">
+    {% include 'partials/conv_messages.html' %}
+  </div>
+</section>
+{% else %}
+<div id="conv-history"></div>
+{% endif %}
+
+<section>
+  <h2>Odpověď</h2>
+  <div id="response-area">
+    <div style="color:#484f58; font-size:0.85rem;">Zatím žádná odpověď.</div>
+  </div>
+</section>
+
+<script>
+function loadConvContext(convId) {
+  if (!convId) return;
+  window.location.href = '/ask?conv=' + convId;
+}
+</script>
+{% endblock %}

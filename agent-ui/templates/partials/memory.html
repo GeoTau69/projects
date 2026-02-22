@@ -1,0 +1,64 @@
+{% macro bar(pct) %}
+<span style="
+  display: inline-block;
+  width: 120px;
+  height: 8px;
+  background: #21262d;
+  border-radius: 4px;
+  vertical-align: middle;
+  margin: 0 0.5rem;
+">
+  <span style="
+    display: block;
+    height: 100%;
+    width: {{ pct }}%;
+    background: {% if pct > 85 %}#f85149{% elif pct > 60 %}#d29922{% else %}#3fb950{% endif %};
+    border-radius: 4px;
+    transition: width 0.3s;
+  "></span>
+</span>
+{% endmacro %}
+
+{% if mem.ram %}
+  {% if mem.ram.error is defined %}
+    <div class="error-box">RAM: {{ mem.ram.error }}</div>
+  {% else %}
+  <div class="row">
+    <div class="dot {% if mem.ram.pct > 85 %}dot-red{% elif mem.ram.pct > 60 %}dot-yellow{% else %}dot-green{% endif %}"></div>
+    <div style="min-width: 80px; color: #8b949e; font-size: 0.85rem;">RAM</div>
+    {{ bar(mem.ram.pct) }}
+    <div style="min-width: 120px; font-size: 0.85rem;">
+      {{ mem.ram.used_gb }} / {{ mem.ram.total_gb }} GB
+    </div>
+    <div style="color: #484f58; font-size: 0.75rem;">{{ mem.ram.pct }}%</div>
+  </div>
+  {% endif %}
+{% endif %}
+
+{% if mem.gpus %}
+  {% for gpu in mem.gpus %}
+  <div class="row">
+    <div class="dot {% if gpu.pct > 85 %}dot-red{% elif gpu.pct > 60 %}dot-yellow{% else %}dot-green{% endif %}"></div>
+    <div style="min-width: 80px; color: #8b949e; font-size: 0.85rem;">VRAM</div>
+    {{ bar(gpu.pct) }}
+    <div style="min-width: 120px; font-size: 0.85rem;">
+      {{ gpu.used_gb }} / {{ gpu.total_gb }} GB
+    </div>
+    <div style="color: #484f58; font-size: 0.75rem;">{{ gpu.name }}</div>
+  </div>
+  {% endfor %}
+{% endif %}
+
+{% if mem.ollama_loaded is defined %}
+  <div class="row">
+    <div class="dot {% if mem.ollama_loaded %}dot-yellow{% else %}dot-green{% endif %}"></div>
+    <div style="min-width: 80px; color: #8b949e; font-size: 0.85rem;">Ollama</div>
+    <div style="font-size: 0.85rem; color: #484f58; flex: 1;">
+      {% if mem.ollama_loaded %}
+        načteno: {{ mem.ollama_loaded | join(', ') }}
+      {% else %}
+        žádný model v paměti
+      {% endif %}
+    </div>
+  </div>
+{% endif %}

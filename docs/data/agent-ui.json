@@ -1,0 +1,641 @@
+{
+  "project": "agent-ui",
+  "display_name": "Agent UI",
+  "version": "2.0.0",
+  "updated": "2026-02-22",
+  "description": "Webové rozhraní pro AI orchestrátor. Flask + HTMX, konverzace, šablony, statistiky.",
+  "status": "active",
+  "port": 8100,
+  "tech": ["python", "flask", "htmx", "sqlite"],
+  "access": {
+    "local": "http://localhost:8100",
+    "lan": "http://192.168.0.101:8100",
+    "tailscale": "http://fedora:8100"
+  },
+  "back_link": {"href": "/", "label": "🏠 Zpět na Dashboard"},
+  "modules": [
+    {
+      "id": "app_py",
+      "name": "app.py",
+      "file": "app.py",
+      "purpose": "Flask server — 450+ řádků, 15 routes, orchestrátor integration",
+      "status": "stable",
+      "public_methods": [
+        {
+          "name": "billing_today",
+          "params": "",
+          "returns": "dict",
+          "description": "Vrátí billing summary pro dnešní den (volání, cache hits, tokeny, náklady)."
+        },
+        {
+          "name": "memory_stats",
+          "params": "",
+          "returns": "dict",
+          "description": "Čte /proc/meminfo, nvidia-smi, ollama ps — vrátí RAM/GPU/Ollama stats."
+        },
+        {
+          "name": "_build_conv_messages",
+          "params": "conn, cid, new_prompt, summary_id",
+          "returns": "list[dict]",
+          "description": "Sestaví messages list pro AI z historie konverzace + nového promptu (s opcionálním souhrnem)."
+        },
+        {
+          "name": "_generate_summaries",
+          "params": "cid, history_text",
+          "returns": "None",
+          "description": "Spustí 3 background vlákna pro generování souhrnů (Qwen, DeepSeek, Haiku)."
+        },
+        {
+          "name": "_generate_conv_name",
+          "params": "cid, first_exchange",
+          "returns": "None",
+          "description": "Background vlákno — Haiku pojmenuje konverzaci po první odpovědi."
+        }
+      ],
+      "dependencies": ["flask", "anthropic", "_meta (orchestrator, billing, router, conversations, plugins)"],
+      "notes": "Routes vrátí HTML (GET) nebo HTMX partials (POST). Backend selector mapuje force_backend → orchestrátor."
+    },
+    {
+      "id": "conversations_py",
+      "name": "_meta/conversations.py",
+      "file": "../../_meta/conversations.py",
+      "purpose": "DB layer — templates, conversations, messages, summaries",
+      "status": "stable",
+      "public_methods": [
+        {
+          "name": "template_list/create/get/update/delete",
+          "params": "conn, [name, content, tid]",
+          "returns": "list[dict] / int / dict / None",
+          "description": "CRUD pro šablony (system prompts uložené v DB)."
+        },
+        {
+          "name": "conv_list/get/create/rename/close",
+          "params": "conn, [cid, name]",
+          "returns": "list[dict] / dict / int / None",
+          "description": "CRUD pro konverzace + message_count agregace."
+        },
+        {
+          "name": "msg_list/last_id/save_user/save_assistant/get_unanswered",
+          "params": "conn, cid, [content, model, backend, tokens]",
+          "returns": "list[dict] / int / dict / None",
+          "description": "Messages: řetězení parent_id, uložení promptu/odpovědi, detekce nezodpovězených."
+        },
+        {
+          "name": "summary_list/save",
+          "params": "conn, [cid, model, content, gen_time_ms]",
+          "returns": "list[dict] / int",
+          "description": "Souhrny: uloží s word_count, char_count — počítáno při save."
+        }
+      ],
+      "dependencies": ["sqlite3", "billing.DB_PATH"],
+      "notes": "Sdílená DB s billing (~/.ai-agent/tokens.db). 4 tabulky. init_conv_db() vytvoří/migruje schéma."
+    }
+  ],
+  "sections": [
+    {
+      "id": "prehled",
+      "title": "Přehled",
+      "icon": "💬",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "<strong>Agent UI</strong> je webové rozhraní pro orchestrátor (_meta/). Umožňuje konverzace s AI (s historií), správu šablon (system prompts), a statistiky nákladů."
+        },
+        {
+          "type": "text",
+          "text": "<strong>Proč to máme:</strong> Orchestrátor je CLI/SDK — pro běžné dotazy je web pohodlnější. Konverzace s kontextem, šablony pro opakované úkoly, monitoring nákladů na jednom místě."
+        },
+        {
+          "type": "table",
+          "headers": ["Funkce", "Popis"],
+          "rows": [
+            ["<strong>Request builder</strong>", "Zvolíš konverzaci, šablonu, operaci, model, backend → odešleš"],
+            ["<strong>Konverzace</strong>", "Message history s parent-child řetězením, auto-naming (Haiku), auto-closing"],
+            ["<strong>Šablony</strong>", "System prompts v DB — pro code review, architektura, custom tasky"],
+            ["<strong>Souhrny</strong>", "Po ukončení: paralelní generování (Qwen, DeepSeek, Haiku) — porovnání modelů"],
+            ["<strong>Statistiky</strong>", "Billing: posledních 50 requestů, 7denní přehled, cache hit rate"],
+            ["<strong>Backend selector</strong>", "Vnutit Pro (claude-code) / API / Ollama, nebo auto priorita"],
+            ["<strong>Memory monitor</strong>", "RAM/GPU/Ollama live stats v hlavičce + detail panel"]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tech-stack",
+      "title": "Tech stack",
+      "icon": "⚙️",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Backend"
+        },
+        {
+          "type": "list",
+          "entries": [
+            "<strong>Framework:</strong> Flask (Python 3.14) — simplicity over magic",
+            "<strong>Databáze:</strong> SQLite <code>~/.ai-agent/tokens.db</code> (sdílená s billing)",
+            "<strong>Orchestrátor:</strong> <code>_meta/orchestrator.py</code> + plugins (claude-code, claude-api, ollama)",
+            "<strong>Threading:</strong> Background vlákna pro souhrny + auto-naming (daemon threads)"
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "Frontend"
+        },
+        {
+          "type": "list",
+          "entries": [
+            "<strong>HTML/CSS:</strong> Inline v Jinja2 šablonách — dark theme, monospace, konsistentní s dashboard.py",
+            "<strong>Interaktivita:</strong> HTMX 2.0.4 (CDN) — progressive enhancement, bez JS bundleru",
+            "<strong>Polling:</strong> Status (10s), Memory (15s), Summaries (5s) — HTMX <code>hx-trigger=\"every Ns\"</code>",
+            "<strong>Spinner:</strong> JavaScript detekuje backend + model, mění spinner text"
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "Závislosti"
+        },
+        {
+          "type": "code",
+          "lang": "bash",
+          "text": "flask              # Web framework\nanthropologic    # Claude API backend (pro request)\nsqlite3            # Built-in — DB\nurllib             # Built-in — Ollama HTTP\nsubprocess         # Built-in — nvidia-smi, ollama ps"
+        }
+      ]
+    },
+    {
+      "id": "architektura",
+      "title": "Architektura",
+      "icon": "🏗️",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Datový tok"
+        },
+        {
+          "type": "code",
+          "lang": "text",
+          "text": "User vyplní formulář\n   ↓\nPOST /ask\n   ├─ Ulož prompt do DB (msg_save_user)\n   ├─ Postav messages z historie + nového promptu\n   ├─ Vyber backend dle backend_force nebo auto priority\n   ├─ Zavolej orchestrator.request()\n   │  ├─ Sémantická cache lookup\n   │  ├─ Hash cache lookup (dle CACHE_TTL[operace])\n   │  ├─ Zvolení backendu: Pro → API → Ollama\n   │  └─ Execute na zvoleném backendu\n   ├─ Ulož odpověď do DB (msg_save_assistant + čas)\n   ├─ Background: Haiku pojmenuje konverzaci (pokud nová)\n   └─ Vrátí response.html s badgem backendu\n   ↓\nHTMX swap → Browser zobrazí odpověď + čas"
+        },
+        {
+          "type": "heading",
+          "text": "Konverzace — lifecycle"
+        },
+        {
+          "type": "code",
+          "lang": "text",
+          "text": "1. Nová konverzace\n   → conv_create() → practices /ask?conv=<id>\n\n2. Výběr šablony (volitelný)\n   → První zpráva s is_template=1 → neukazuje se v kontextu AI\n   → Zbylé prompty jsou normální user messages\n\n3. Message chain\n   → user msg 1 → parent_id=None\n   → assistant response 1 → parent_id=user_msg_1.id\n   → user msg 2 → parent_id=response_1.id\n   → ...řetězení pokračuje\n\n4. Uzavření konverzace\n   → conv_close() → is_closed=1\n   → Background: _generate_summaries()\n      ├─ vlákno 1: Qwen (ollama/qwen2.5-coder:14b)\n      ├─ vlákno 2: DeepSeek (ollama/deepseek-coder:33b)\n      └─ vlákno 3: Haiku (claude-haiku-4-5)\n   → Každý souhrn se uloží s word_count, char_count, gen_time_ms\n   → Frontend polling summaries každých 5s\n\n5. Znovuotevření uzavřené konverzace\n   → Výběr souhrnu v ask form (haiku/qwen/deepseek)\n   → Souhrn se připojí jako [Kontext předchozí konverzace]\n   → AI vidí souhrn, ne plnou historii → úspora tokenů"
+        },
+        {
+          "type": "heading",
+          "text": "Backend priority (auto mode)"
+        },
+        {
+          "type": "list",
+          "ordered": true,
+          "entries": [
+            "<strong>Cloud modely:</strong> Pro (claude-code) → API (claude) → Ollama (fallback)",
+            "<strong>Lokální modely:</strong> Ollama → Pro/API (fallback)",
+            "<strong>Explicitní ollama model:</strong> Vynucuje Ollama (raise error pokud unavailable)"
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "Database schema"
+        },
+        {
+          "type": "code",
+          "lang": "sql",
+          "text": "templates\n  id, name, content, created_at\n\nconversations\n  id, name, created_at, closed_at, is_closed\n\nmessages\n  id, conversation_id, parent_id,\n  role (user/assistant), content, is_template,\n  model, backend, tokens_in, tokens_out, cost_usd, response_time_ms,\n  timestamp\n\nconv_summaries\n  id, conversation_id, model (qwen/deepseek/haiku),\n  content, word_count, char_count, gen_time_ms, created_at"
+        }
+      ]
+    },
+    {
+      "id": "routes",
+      "title": "HTTP Routes",
+      "icon": "🛣️",
+      "blocks": [
+        {
+          "type": "table",
+          "headers": ["Route", "Method", "Vrací", "Popis"],
+          "rows": [
+            ["<code>/</code>", "GET", "HTML", "Dashboard — billing dnes, status backendů, memory"],
+            ["<code>/status</code>", "GET", "HTMX partial", "Backend availability (polling 10s)"],
+            ["<code>/memory</code>", "GET", "HTMX partial", "RAM/GPU/Ollama detail"],
+            ["<code>/memory/header</code>", "GET", "HTMX partial", "Kompaktní RAM bar (polling 15s)"],
+            ["<code>/stats</code>", "GET", "HTML", "Billing: posledních 50 requestů, 7d přehled, cache rate"],
+            ["<code>/ask</code>", "GET", "HTML", "Request builder (<code>?conv=&lt;id&gt;</code>)"],
+            ["<code>/ask</code>", "POST", "HTMX partial", "Orchestrátor → response.html"],
+            ["<code>/templates</code>", "GET", "HTML", "Seznam šablon"],
+            ["<code>/templates/new</code>", "POST", "Redirect", "Vytvoř novou šablonu"],
+            ["<code>/templates/&lt;id&gt;/edit</code>", "GET/POST", "HTML / Redirect", "Editace šablony"],
+            ["<code>/templates/&lt;id&gt;/delete</code>", "POST", "Redirect", "Smaž šablonu"],
+            ["<code>/conversations</code>", "GET", "HTML", "Seznam konverzací"],
+            ["<code>/conversations/new</code>", "POST", "Redirect", "Vytvoř novou konverzaci"],
+            ["<code>/conversations/&lt;id&gt;/messages</code>", "GET", "HTMX partial", "Historie zpráv"],
+            ["<code>/conversations/&lt;id&gt;/close</code>", "POST", "Redirect", "Uzavři + gen. souhrny"],
+            ["<code>/conversations/&lt;id&gt;/summaries</code>", "GET", "HTMX partial", "Stav souhrnů (polling)"],
+            ["<code>/conversations/&lt;id&gt;/rename</code>", "POST", "Redirect", "Přejmenuj konverzaci"]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "backendy",
+      "title": "Backendy (3 modely AI)",
+      "icon": "🤖",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Claude Code (Pro/Max licence)"
+        },
+        {
+          "type": "list",
+          "entries": [
+            "<strong>ID:</strong> <code>claude-code</code>",
+            "<strong>Zdroj:</strong> Tvoje Pro/Max CLI — <code>claude -p</code>",
+            "<strong>Cena:</strong> Paušál (Pro) — bez dodatečných nákladů",
+            "<strong>Tokeny:</strong> Odhad (1 slovo ≈ 1.35 tok, 1 znak ≈ 1/3.8 tok)",
+            "<strong>Timeout:</strong> 120s",
+            "<strong>Dostupnost:</strong> <code>shutil.which('claude') is not None</code>"
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "Claude API (Anthropic pay-as-you-go)"
+        },
+        {
+          "type": "list",
+          "entries": [
+            "<strong>ID:</strong> <code>claude</code>",
+            "<strong>Zdroj:</strong> ANTHROPIC_API_KEY — SDK",
+            "<strong>Cena:</strong> Per token (opus $15/M out, sonnet $3/M out, haiku $0.8/M out)",
+            "<strong>Tokeny:</strong> Přesné (z API response)",
+            "<strong>Timeout:</strong> Bez limitu (SDK default)",
+            "<strong>Dostupnost:</strong> <code>ANTHROPIC_API_KEY</code> env var"
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "Ollama (lokální, zdarma)"
+        },
+        {
+          "type": "list",
+          "entries": [
+            "<strong>ID:</strong> <code>ollama</code>",
+            "<strong>Modely:</strong> qwen2.5-coder:14b (LOCAL_MODEL), deepseek-coder:33b (DEEPSEEK_MODEL)",
+            "<strong>Cena:</strong> $0 — běží lokálně",
+            "<strong>Tokeny:</strong> Odhad z eval_count",
+            "<strong>Timeout:</strong> 120s (DeepSeek může trvat déle → zvýšit na 300s?)",
+            "<strong>Dostupnost:</strong> HEAD na <code>localhost:11434</code> (2s timeout)"
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "Backend badge v UI"
+        },
+        {
+          "type": "table",
+          "headers": ["Backend", "Barva", "Badge text"],
+          "rows": [
+            ["Claude Code (Pro)", "🟢 Zelená", "<code>Claude Code (Pro)</code>"],
+            ["Claude API", "🟡 Žlutá", "<code>Claude API (pay-as-you-go)</code>"],
+            ["Ollama", "🔵 Modrá", "<code>Ollama (lokální)</code>"]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ui-features",
+      "title": "UI Features",
+      "icon": "✨",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Request builder (/ask)"
+        },
+        {
+          "type": "text",
+          "text": "Zvolíš:"
+        },
+        {
+          "type": "list",
+          "entries": [
+            "<strong>Konverzace (dropdown):</strong> Nová, nebo existující konverzace",
+            "<strong>Šablona (dropdown):</strong> System prompt z DB (volitelný)",
+            "<strong>Operace (dropdown):</strong> doc_update (Qwen, cache 24h), code_review (Sonnet, no cache), atd.",
+            "<strong>Model (dropdown):</strong> auto, sonnet, opus, haiku, qwen, deepseek",
+            "<strong>Backend (dropdown):</strong> auto (Pro→API→Ollama), nebo force Claude Code/API/Ollama",
+            "<strong>Prompt (textarea):</strong> Tvůj dotaz",
+            "<strong>Unanswered prompt:</strong> Pokud konverzace má nezodpovězený prompt, auto-načte se s ⚠"
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "Spinner & kontextový text"
+        },
+        {
+          "type": "text",
+          "text": "Během čekání spinner zobrazuje:"
+        },
+        {
+          "type": "list",
+          "entries": [
+            "<code>⟳ Ollama / qwen2.5-coder:14b zpracovává… (30–120s)</code> — lokální model",
+            "<code>⟳ Ollama / deepseek-coder:33b zpracovává… (60–180s)</code> — pomalejší",
+            "<code>⟳ Claude Code (Pro) zpracovává…</code> — web, rychlé",
+            "<code>⟳ Claude API zpracovává…</code> — cloud, rychlé"
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "Odpověď"
+        },
+        {
+          "type": "list",
+          "entries": [
+            "<strong>Backend badge:</strong> Barevný tag (Pro/API/Ollama)",
+            "<strong>Tokeny:</strong> in/out (u Claude Code: <code>(odhad)</code>)",
+            "<strong>Cena:</strong> USD (u Claude Code: <code>(orient.)</code>)",
+            "<strong>Cache hit:</strong> ⚡ pokud cache",
+            "<strong>Čas:</strong> ms odpovědi"
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "Memory bar"
+        },
+        {
+          "type": "list",
+          "entries": [
+            "<strong>Hlavička:</strong> Kompaktní RAM bar (color-coded: zelená &lt;60%, žlutá 60–85%, červená &gt;85%)",
+            "<strong>Refresh:</strong> 15s (HTMX polling)",
+            "<strong>Detail panel:</strong> RAM GB, GPU VRAM (nvidia-smi), loaded Ollama models (ollama ps)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "databaze",
+      "title": "Databáze",
+      "icon": "💾",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "SQLite schema"
+        },
+        {
+          "type": "text",
+          "text": "Sdílená s billing: <code>~/.ai-agent/tokens.db</code>"
+        },
+        {
+          "type": "heading",
+          "text": "templates"
+        },
+        {
+          "type": "code",
+          "lang": "sql",
+          "text": "id         INTEGER PRIMARY KEY\nname       VARCHAR(100) NOT NULL\ncontent    TEXT NOT NULL\ncreated_at DATETIME DEFAULT CURRENT_TIMESTAMP"
+        },
+        {
+          "type": "text",
+          "text": "<strong>Účel:</strong> System prompts (pravidla pro AI). Příklady: \"Jsi expert na Python\", \"Code review checks\", \"Generuj boilerplate\"."
+        },
+        {
+          "type": "heading",
+          "text": "conversations"
+        },
+        {
+          "type": "code",
+          "lang": "sql",
+          "text": "id         INTEGER PRIMARY KEY\nname       VARCHAR(200)          — auto-generated by Haiku\ncreated_at DATETIME\nclosed_at  DATETIME              — NULL pokud aktivní\nis_closed  INTEGER DEFAULT 0"
+        },
+        {
+          "type": "text",
+          "text": "<strong>Účel:</strong> Kontejner pro messages. Jméno se generuje po první odpovědi. Uzavření spustí summaries."
+        },
+        {
+          "type": "heading",
+          "text": "messages"
+        },
+        {
+          "type": "code",
+          "lang": "sql",
+          "text": "id               INTEGER PRIMARY KEY\nconversation_id  INTEGER REFERENCES conversations(id)\nparent_id        INTEGER REFERENCES messages(id)  — řetězení\nrole             VARCHAR(20): 'user' | 'assistant'\ncontent          TEXT\nis_template      INTEGER: 1 = šablona, 0 = normální zpráva\nmodel            VARCHAR(50)        — který model odpověděl\nbackend          VARCHAR(30)        — 'claude-code' | 'claude' | 'ollama'\ntokens_in        INTEGER            — input tokens\ntokens_out       INTEGER            — output tokens\ncost_usd         DECIMAL            — jen u placených\nresponse_time_ms INTEGER            — ms na odpověď\ntimestamp        DATETIME"
+        },
+        {
+          "type": "text",
+          "text": "<strong>Účel:</strong> Jednotlivé zprávy v konverzaci. Parent_id tvoří řetězec: user→assistant→user→..."
+        },
+        {
+          "type": "heading",
+          "text": "conv_summaries"
+        },
+        {
+          "type": "code",
+          "lang": "sql",
+          "text": "id               INTEGER PRIMARY KEY\nconversation_id  INTEGER REFERENCES conversations(id)\nmodel            VARCHAR(50)        — 'qwen' | 'deepseek' | 'haiku'\ncontent          TEXT               — samotný souhrn (max 200 slov)\nword_count       INTEGER            — počet slov v souhrnu\nchar_count       INTEGER            — počet znaků\ngen_time_ms      INTEGER            — jak dlouho trvala generace\ncreated_at       DATETIME"
+        },
+        {
+          "type": "text",
+          "text": "<strong>Účel:</strong> Kontextové souhrny uzavřených konverzací. Umožňuje porovnání: který model vygeneruje nejlepší souhrn za nejkratší čas?"
+        }
+      ]
+    },
+    {
+      "id": "spusteni-instalace",
+      "title": "Spuštění & Instalace",
+      "icon": "⌨️",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Předpoklady"
+        },
+        {
+          "type": "list",
+          "entries": [
+            "<strong>Python 3.14+</strong> — stdlib",
+            "<strong>Flask</strong> — <code>pip install flask</code>",
+            "<strong>Anthropic SDK</strong> — <code>pip install anthropic</code> (pro Claude API backend)",
+            "<strong>ANTHROPIC_API_KEY</strong> — env var (pro Claude API backend)",
+            "<strong>Ollama</strong> — <code>ollama serve</code> běžící na localhost:11434 (pro Ollama backend)"
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "Instalace & spuštění"
+        },
+        {
+          "type": "code",
+          "lang": "bash",
+          "text": "cd /home/geo/projects/agent-ui\n\n# Nainstaluj závislosti\npip install -r requirements.txt\n\n# Nastav API klíč\nexport ANTHROPIC_API_KEY=sk-ant-...\n\n# Spusť server\npython3 app.py\n# Output: Agent UI: http://localhost:8100/"
+        },
+        {
+          "type": "heading",
+          "text": "Systemd (user service)"
+        },
+        {
+          "type": "code",
+          "lang": "bash",
+          "text": "systemctl --user status agent-ui\nsystemctl --user start agent-ui\nsystemctl --user restart agent-ui\nsystemctl --user stop agent-ui\njournalctl --user -u agent-ui -f"
+        },
+        {
+          "type": "heading",
+          "text": "Checks"
+        },
+        {
+          "type": "code",
+          "lang": "bash",
+          "text": "# Server live?\ncurl http://localhost:8100/\n\n# Backend dostupný?\ncurl http://localhost:8100/status | grep -i available\n\n# Databáze?\nsqlite3 ~/.ai-agent/tokens.db '.tables'\n\n# Ollama?\ncurl http://localhost:11434/api/tags"
+        }
+      ]
+    },
+    {
+      "id": "workflow",
+      "title": "Workflow & Use cases",
+      "icon": "🎯",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Nová konverzace"
+        },
+        {
+          "type": "list",
+          "ordered": true,
+          "entries": [
+            "Klikni: <strong>Nová konverzace</strong> → nová řádka v DB, redirect /ask?conv=X",
+            "Vyber (volitelně) <strong>Šablonu</strong> → první zpráva bude šablona (is_template=1)",
+            "Napiš <strong>Prompt</strong> → vlož svůj dotaz",
+            "Vyber <strong>Backend</strong> (auto / Claude Code / API / Ollama)",
+            "Klikni <strong>Odeslat</strong> → prompt se uloží do DB, AI zpracuje, odpověď se uloží"
+        ]
+      ]
+        },
+        {
+          "type": "heading",
+          "text": "Pokračování konverzace"
+        },
+        {
+          "type": "list",
+          "ordered": true,
+          "entries": [
+            "Vyber konverzaci v dropdown → historie se načte",
+            "Napiš další prompt",
+            "Odeslat → nový prompt se uloží, history (včetně šablony) se pošle AI",
+            "AI vrátí odpověď → reply se uloží s parent_id = tvůj_prompt.id"
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "Uzavření konverzace"
+        },
+        {
+          "type": "list",
+          "ordered": true,
+          "entries": [
+            "Konverzace se uloží jako is_closed=1",
+            "Background: 3 vlákna generují souhrny (Qwen, DeepSeek, Haiku) paralelně",
+            "Frontend polling summaries každých 5s — vidíš stav ✓/⟳",
+            "Jakmile všechny hotovy, vidíš: <code>✓ qwen (123sl/456zn/1234ms)</code>"
+        ]
+        },
+        {
+          "type": "heading",
+          "text": "Znovuotevření uzavřené konverzace"
+        },
+        {
+          "type": "list",
+          "ordered": true,
+          "entries": [
+            "Vyber konverzaci v dropdown (ikona ✕ označuje uzavřenou)",
+            "Vlož nový prompt",
+            "Vybrat <strong>Kontext (souhrn)</strong> — haiku/qwen/deepseek + word/char count",
+            "Odeslat → AI vidí souhrn místo plné historii → úspora tokenů"
+        ]
+        },
+        {
+          "type": "heading",
+          "text": "Šablony"
+        },
+        {
+          "type": "list",
+          "ordered": true,
+          "entries": [
+            "Přejdi na <strong>Šablony</strong> → seznam",
+            "<strong>Přidej novou:</strong> Název + obsah (system prompt)",
+            "<strong>Edituj / Smaž</strong> existující",
+            "V Ask: vyber šablonu → stane se system promptem (či první zprávou v konverzaci)"
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "Monitorování"
+        },
+        {
+          "type": "list",
+          "ordered": true,
+          "entries": [
+            "<strong>Dashboard:</strong> Backend status (Pro/API/Ollama), memory, billing dnes",
+            "<strong>Statistiky:</strong> Posledních 50 requestů, 7d přehled, cache hit %",
+            "<strong>Memory bar:</strong> RAM/GPU live — refresh 15s"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faq",
+      "title": "FAQ",
+      "icon": "❓",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Jaký je rozdíl mezi operacemi?"
+        },
+        {
+          "type": "text",
+          "text": "Operace řídí routing + cache. Příklady:"
+        },
+        {
+          "type": "list",
+          "entries": [
+            "<code>doc_update</code> → Qwen (lokální) + cache 24h",
+            "<code>code_review</code> → Sonnet + bez cache",
+            "<code>architecture</code> → Opus + bez cache",
+            "<code>deepseek</code> → DeepSeek Ollama + bez cache"
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "Proč by mě zajímaly souhrny (summaries)?"
+        },
+        {
+          "type": "text",
+          "text": "Po uzavření konverzace si můžeš koukat, který model (Qwen/DeepSeek/Haiku) nejlépe shrnul diskuzi. Metrika: word_count, char_count, gen_time_ms. Určí, který model je nejoptimálnější pro tvůj use case."
+        },
+        {
+          "type": "heading",
+          "text": "Jak znám, kolik mě stojí ta konverzace?"
+        },
+        {
+          "type": "text",
+          "text": "V <strong>Statistiky</strong> / /stats vidíš tabulku s posledních 50 requestů — model, tokeny, cena. Summaries jsou zdarma (Qwen/DeepSeek) nebo už zaplaceny (Haiku v Pro)."
+        },
+        {
+          "type": "heading",
+          "text": "Mohu být offline?"
+        },
+        {
+          "type": "text",
+          "text": "Pokud je Ollama běžící (qwen + deepseek) a Claude Code dostupný, ano. Claude API bez internetového připojení nejde."
+        },
+        {
+          "type": "heading",
+          "text": "Timeout je příliš krátký / dlouhý"
+        },
+        {
+          "type": "text",
+          "text": "Default: Ollama 120s, Claude Code 120s. DeepSeek 33B může trvat déle → zvýšit na 300s v <code>_meta/plugins/ollama.py</code>. UI spinner změní text, aby viděl, co se děje."
+        }
+      ]
+    }
+  ]
+}

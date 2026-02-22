@@ -1,0 +1,54 @@
+{% if error %}
+  <div class="error-box">{{ error }}</div>
+{% elif response %}
+  {# Detekce backendu z modelu #}
+  {% if response.model.startswith('claude-code/') %}
+    {% set backend_label = 'Claude Code (Pro)' %}
+    {% set backend_color = '#3fb950' %}
+    {% set clean_model = response.model.replace('claude-code/', '') %}
+  {% elif response.model.startswith('ollama/') %}
+    {% set backend_label = 'Ollama (lokální)' %}
+    {% set backend_color = '#58a6ff' %}
+    {% set clean_model = response.model.replace('ollama/', '') %}
+  {% else %}
+    {% set backend_label = 'Claude API (pay-as-you-go)' %}
+    {% set backend_color = '#d29922' %}
+    {% set clean_model = response.model %}
+  {% endif %}
+
+  <div style="margin-bottom: 0.75rem; display: flex; align-items: center; gap: 1rem;">
+    <span style="
+      background: {{ backend_color }}22;
+      border: 1px solid {{ backend_color }};
+      color: {{ backend_color }};
+      font-size: 0.75rem;
+      padding: 2px 10px;
+      border-radius: 3px;
+      letter-spacing: 1px;
+    ">{{ backend_label }}</span>
+    <span style="color: #484f58; font-size: 0.8rem;">{{ clean_model }}</span>
+    {% if response.cost == 0.0 and response.tokens_in == 0 %}
+      <span style="color: #d29922; font-size: 0.8rem;">&#9889; cache hit</span>
+    {% endif %}
+  </div>
+
+  <pre>{{ response.text }}</pre>
+
+  <div class="meta" style="margin-top: 0.5rem;">
+    {% if response.tokens_in > 0 %}
+      tokeny: {{ '{:,}'.format(response.tokens_in) }} in / {{ '{:,}'.format(response.tokens_out) }} out
+      {% if response.model.startswith('claude-code/') %}
+        <span style="color: #484f58;"> (odhad)</span>
+      {% endif %}
+      · cena: ${{ '%.6f' | format(response.cost) }}
+      {% if response.model.startswith('claude-code/') %}
+        <span style="color: #484f58;"> (orient.)</span>
+      {% endif %}
+    {% else %}
+      tokeny: 0 · cena: $0.000000
+    {% endif %}
+    {% if elapsed_ms %}
+      · čas: {{ elapsed_ms }}ms
+    {% endif %}
+  </div>
+{% endif %}

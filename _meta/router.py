@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 # ─── Konfigurace ─────────────────────────────────────────────────────────────
 
 LOCAL_MODEL      = 'qwen2.5-coder:14b'
+DEEPSEEK_MODEL   = 'deepseek-coder:33b'
 OLLAMA_CHAT_URL  = 'http://localhost:11434/api/chat'
 
 ROUTING_RULES: dict[str, str] = {
@@ -24,6 +25,7 @@ ROUTING_RULES: dict[str, str] = {
     'code_review':   'sonnet',
     'architecture':  'opus',
     'debug_complex': 'sonnet',
+    'deepseek':      'deepseek',
     '_default':      'sonnet',
 }
 
@@ -34,6 +36,7 @@ CACHE_TTL: dict[str, int] = {
     'code_review':   0,
     'architecture':  0,
     'debug':         0,
+    'deepseek':      0,
     '_default':     24,
 }
 
@@ -48,10 +51,10 @@ def get_cache_ttl(operation: str) -> int:
 def resolve_model(operation: str, model: str) -> str:
     """
     Rozhodne jaký model použít.
-      'auto'  → ROUTING_RULES[operation] nebo '_default'
-      'local' → LOCAL_MODEL s prefixem 'ollama/'
-      alias   → plný název Claude modelu
-    Vrátí buď 'ollama/<název>' nebo plný Claude model string.
+      'auto'     → ROUTING_RULES[operation] nebo '_default'
+      'local'    → LOCAL_MODEL s prefixem 'ollama/'
+      'deepseek' → DEEPSEEK_MODEL s prefixem 'ollama/'
+      alias      → plný název Claude modelu
     """
     if model == 'auto':
         dest = ROUTING_RULES.get(operation, ROUTING_RULES['_default'])
@@ -60,33 +63,47 @@ def resolve_model(operation: str, model: str) -> str:
 
     if dest == 'local':
         return f'ollama/{LOCAL_MODEL}'
+    if dest in ('deepseek', 'deepseek-coder'):
+        return f'ollama/{DEEPSEEK_MODEL}'
     return normalize_model(dest)
 
 
-def select_backend(operation: str, backends: list['Backend']) -> 'Backend':
+def select_backend(operation: str, backends: list['Backend'],
+                   model_hint: str = '') -> 'Backend':
     """
     Vybere dostupný backend dle routing pravidel.
-    Iteruje backends, kontroluje is_available(), vybírá dle resolve_model().
+
+    Priorita pro cloud modely: claude-code (Pro, zdarma) → claude API → Ollama
+    Priorita pro lokální modely: Ollama → claude-code → claude API
+    model_hint: pokud začíná 'ollama/', vynutí Ollama backend.
     """
     dest = ROUTING_RULES.get(operation, ROUTING_RULES['_default'])
 
-    # Preferujeme backend odpovídající routing rule
-    if dest == 'local':
+    # Explicitní Ollama model (z resolve_model)
+    if model_hint.startswith('ollama/'):
         for b in backends:
             if b.name == 'ollama' and b.is_available():
                 return b
-        # Fallback na cloud pokud Ollama nedostupná
+        raise RuntimeError(
+            f"Ollama backend nedostupný (model: {model_hint})\n"
+            "  Spusť: ollama serve"
+        )
+
+    if dest in ('local', 'deepseek'):
+        # Lokální model přes Ollamu, fallback na cloud
         for b in backends:
-            if b.name != 'ollama' and b.is_available():
+            if b.name == 'ollama' and b.is_available():
                 return b
+        for name in ('claude-code', 'claude'):
+            for b in backends:
+                if b.name == name and b.is_available():
+                    return b
     else:
-        for b in backends:
-            if b.name == 'claude' and b.is_available():
-                return b
-        # Fallback na Ollama/qwen2.5-coder pokud Claude nedostupný
-        for b in backends:
-            if b.name == 'ollama' and b.is_available():
-                return b
+        # Cloud model: claude-code (Pro) → claude API → Ollama (fallback)
+        for name in ('claude-code', 'claude', 'ollama'):
+            for b in backends:
+                if b.name == name and b.is_available():
+                    return b
 
     # Poslední záchrana — první dostupný
     for b in backends:

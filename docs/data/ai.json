@@ -1,125 +1,172 @@
 {
   "project": "ai",
   "display_name": "AI Dev Agent Stack",
-  "version": "1.1.0",
-  "updated": "2026-02-21",
-  "description": "Komplexní sada nástrojů pro optimalizaci a správu práce s AI. Zahrnuje účetnictví tokenů, prompt cache, sémantické vyhledávání kódu, model routing, dokumentační pipeline a persistentní session systém.",
+  "version": "1.2.0",
+  "updated": "2026-02-22",
+  "description": "Plugin-based AI orchestrator se sémantickou cache. Komplexní sada nástrojů: token tracking, prompt cache, sémantické vyhledávání kódu, model routing (Ollama ↔ Claude), persistence paměti a dokumentační pipeline.",
   "status": "active",
   "port": null,
-  "tech": [
-    "python",
-    "sqlite",
-    "numpy",
-    "ollama",
-    "anthropic-api",
-    "markdown"
-  ],
+  "tech": ["python", "sqlite", "numpy", "ollama", "anthropic-api", "markdown"],
   "access": {
     "local": "http://localhost:8080?project=ai",
     "lan": "http://192.168.0.101:8080?project=ai"
   },
   "modules": [
     {
+      "id": "orchestrator",
+      "name": "Plugin Orchestrator",
+      "file": "_meta/orchestrator.py",
+      "purpose": "Centrální middleware: semantic cache lookup → hash cache → backend routing → execute → billing → cache store",
+      "status": "stable",
+      "public_methods": [
+        {
+          "name": "agent ask",
+          "params": "\"prompt\" --operation OP --project X [--model auto] [--system TEXT]",
+          "returns": "str (odpověď)",
+          "description": "CLI entry point — volá Orchestrator.request() se Spinner UI"
+        },
+        {
+          "name": "Orchestrator.request()",
+          "params": "messages, operation, project, model='auto', system=None, max_tokens=4096",
+          "returns": "Response(text, tokens_in, tokens_out, model, cost)",
+          "description": "Core method: 7-step pipeline (semantic cache → hash cache → routing → execute → log → cache)"
+        }
+      ],
+      "dependencies": ["plugins/base, plugins/claude, plugins/ollama, billing, router, semantic_cache"],
+      "notes": "Fallback routing: když Claude API nedostupný → automaticky Ollama/qwen2.5-coder:14b"
+    },
+    {
       "id": "token_tracker",
       "name": "Token Tracker",
       "file": "_meta/token_tracker.py",
-      "purpose": "SQLite účetnictví API volání, deduplicní prompt cache a automatické model routing.",
+      "purpose": "SQLite účetnictví API volání + prompt cache + model routing",
       "status": "stable",
       "public_methods": [
         {
           "name": "call_api",
           "params": "project: str, operation: str, model: str = 'auto', messages: list, system: str = ''",
           "returns": "str",
-          "description": "Jednotné rozhraní pro API volání s automatickým routingem, cache lookup, logováním a deduplicí."
+          "description": "Zpětně kompatibilní wrapper na Orchestrator.request()"
         },
         {
           "name": "agent log",
           "params": "--project X --operation op --model sonnet --in 5000 --out 1200",
           "returns": "None",
-          "description": "Ruční záznam API volání pro Claude Code sessions."
+          "description": "Ruční záznam API volání pro Claude Code sessions"
         },
         {
           "name": "agent billing",
           "params": "--today|--week|--month|--top|--project X|--model M",
           "returns": "str (tabulka)",
-          "description": "Přehled nákladů na API volání. Podpora filtrování a agregace."
+          "description": "Přehled nákladů na API volání"
         },
         {
           "name": "agent cache",
           "params": "--stats|--list|--clear|--clear --all",
           "returns": "str (výpis)",
-          "description": "Správa prompt cache: statistiky, seznam, vymazání."
+          "description": "Správa hash cache: statistiky, seznam, vymazání"
         },
         {
           "name": "agent route",
           "params": "--show|--test OPERACE",
           "returns": "str (tabulka)",
-          "description": "Zobrazení a testování model routing tabulky."
+          "description": "Zobrazení a testování model routing tabulky"
         }
       ],
       "dependencies": [],
-      "notes": "Databáze: ~/.ai-agent/tokens.db. Dostupné přes CLI ~/bin/agent. Model routing rozhoduje mezi Ollama (local) a Claude (cloud)."
+      "notes": "Databáze: ~/.ai-agent/tokens.db. CLI dostupné přes ~/bin/agent"
     },
     {
       "id": "chroma_indexer",
       "name": "Sémantický vyhledávač",
       "file": "_meta/chroma_indexer.py",
-      "purpose": "Indexování a vyhledávání kódu pomocí vektorových embeddingů (nomic-embed-text přes Ollama).",
+      "purpose": "Indexování a vyhledávání kódu pomocí vektorových embeddingů (nomic-embed-text přes Ollama)",
       "status": "stable",
       "public_methods": [
         {
           "name": "agent index",
           "params": "[--project NAME|--diff|--force|--docs]",
           "returns": "None",
-          "description": "Indexování workspace či jednoho projektu. Strategie: per-definition pro Python, per-sekci pro Markdown."
+          "description": "Indexování workspace či jednoho projektu"
         },
         {
           "name": "agent search",
           "params": "\"dotaz\" [--project X|--top N|--scope docs]",
           "returns": "list[SearchResult]",
-          "description": "Sémantické vyhledávání kódu a dokumentace. Vrací relevance skóre (0–1)."
+          "description": "Sémantické vyhledávání kódu a dokumentace"
         }
       ],
-      "dependencies": [
-        "token_tracker (pro Ollama API)"
+      "dependencies": ["token_tracker (pro Ollama API)"],
+      "notes": "Databáze: ~/.ai-agent/code_index.db. Kompatibilní s Python 3.14 (alternativa k chromadb)"
+    },
+    {
+      "id": "semantic_cache",
+      "name": "Semantic Cache",
+      "file": "_meta/semantic_cache.py",
+      "purpose": "Embedding-based cache — nomic-embed-text embeddingy, cosine similarity lookup",
+      "status": "stable",
+      "public_methods": [
+        {
+          "name": "embed(text)",
+          "params": "text: str",
+          "returns": "np.ndarray | None",
+          "description": "Volá Ollama nomic-embed-text, vrátí embedding"
+        },
+        {
+          "name": "lookup(prompt, operation, threshold=0.90)",
+          "params": "prompt: str, operation: str, threshold: float",
+          "returns": "str | None",
+          "description": "Hledá sémanticky podobnou cached odpověď, vrátí response pokud cosine_similarity >= threshold"
+        },
+        {
+          "name": "store(prompt, response, operation, model)",
+          "params": "prompt: str, response: str, operation: str, model: str",
+          "returns": "None",
+          "description": "Uloží embedding + text do cache_embeddings tabulky"
+        }
       ],
-      "notes": "Databáze: ~/.ai-agent/code_index.db (SQLite BLOB + numpy cosine similarity). Kompatibilní s Python 3.14 (alternativa k chromadb). Chunking: 60 řádků s overlap=10 pro ostatní typy souborů."
+      "dependencies": ["ollama (nomic-embed-text)"],
+      "notes": "Fallback na hash cache pokud Ollama nedostupná. DB tabulka: cache_embeddings v ~/.ai-agent/tokens.db"
     },
     {
       "id": "docs_pipeline",
       "name": "Docs Pipeline",
       "file": "docs/build.py",
-      "purpose": "JSON → HTML renderer (Jinja2). AI generuje JSON, build.py renderuje statické HTML bez účasti AI.",
+      "purpose": "JSON → HTML renderer (Jinja2). AI generuje JSON, build.py renderuje statické HTML bez účasti AI",
       "status": "stable",
       "public_methods": [
         {
           "name": "build.py",
           "params": "[--project NAME|--check|--force|--output FILE]",
           "returns": "HTML file",
-          "description": "Transformace docs/data/{projekt}.json → docs/output/{projekt}.html. Hash cache pro inkrementální buildy."
+          "description": "Transformace docs/data/{projekt}.json → docs/output/{projekt}.html"
         }
       ],
-      "dependencies": [
-        "jinja2"
-      ],
-      "notes": "Klíčové pravidlo: seznam položek se zapisuje jako 'entries' (ne 'items' — Jinja2 conflict). Schéma: docs/schema/doc_schema.json."
+      "dependencies": ["jinja2"],
+      "notes": "Klíčové pravidlo: seznam položek se zapisuje jako 'entries' (ne 'items' — Jinja2 conflict). Schéma: docs/schema/doc_schema.json"
     },
     {
       "id": "persistence_system",
       "name": "Persistence paměti",
-      "file": "memory/MEMORY.md + memory/session.md",
-      "purpose": "Cross-model persistentní session systém. Zachovává kontext napřích seseionami a modelů (Haiku ↔ Sonnet ↔ Opus).",
+      "file": "memory/MEMORY.md + memory/session.md + CLAUDE.md",
+      "purpose": "Cross-model persistentní session systém. Zachovává kontext napříč seseionami a modelů (Haiku ↔ Sonnet ↔ Opus)",
       "status": "stable",
       "public_methods": [
         {
           "name": "konec zvonec",
           "params": "N/A — signální fráze",
           "returns": "Tiché uložení stavu",
-          "description": "Trigger pro uložení MEMORY.md + MODEL.md SESSION LOG + git commit+push. Platí pro všechny modely."
+          "description": "Trigger pro uložení MEMORY.md + MODEL.md SESSION LOG + git commit+push"
+        },
+        {
+          "name": "štafeta",
+          "params": "N/A — signální fráze",
+          "returns": "Aktualizace MEMORY.md",
+          "description": "Lehký handoff mezi modely — bez git, bez sanitace"
         }
       ],
       "dependencies": [],
-      "notes": "Auto-memory adresář: ~/.claude/projects/{hash}/memory/. MEMORY.md je auto-načítán Claudem při každé nové konverzaci. Max 200 řádků. SESSION LOG v MODEL.md je handoff dokument (versioned v git)."
+      "notes": "Auto-memory cesta: ~/.claude/projects/{hash}/memory/. MEMORY.md max 200 řádků, auto-loaded."
     }
   ],
   "sections": [
@@ -130,7 +177,7 @@
       "blocks": [
         {
           "type": "text",
-          "text": "AI Dev Agent Stack je integrovaný systém čtyř komponent: <code>token_tracker</code> pro účetnictví, <code>chroma_indexer</code> pro sémantické vyhledávání, <code>docs pipeline</code> pro generování dokumentace a <code>persistence systém</code> pro uchování kontextu napřích seseionami."
+          "text": "AI Dev Agent Stack je integrovaný systém pro práci s AI. Zahrnuje plugin-based orchestrátor, token tracking, sémantickou cache, routing mezi Ollama (local) a Claude API (cloud), a persistentní session paměť."
         },
         {
           "type": "heading",
@@ -139,16 +186,18 @@
         {
           "type": "list",
           "entries": [
-            "Transparentní účetnictví tokenů s TTL cache pro Anthropic API",
-            "Sémantické vyhledávání kódu (SQLite + numpy, bez chromadb)",
-            "Automatický routing mezi Ollama (local, zdarma) a Claude API (cloud, placené)",
-            "AI generuje pouze JSON data, Python renderuje HTML přes Jinja2",
-            "Cross-model persistence: jeden model pokračuje kde skončil druhý"
+            "Plugin orchestrátor s fallback routingem — Claude → Ollama",
+            "Sémantická cache (nomic-embed-text embeddingy + cosine similarity)",
+            "Hash cache s TTL pravidly per operaci",
+            "Transparentní token tracking a billing",
+            "Sémantické vyhledávání kódu (SQLite + numpy)",
+            "Cross-model persistence — kontext zachován mezi seseionami",
+            "CLI + Python API"
           ]
         },
         {
           "type": "heading",
-          "text": "Status implementace (2026-02-21)"
+          "text": "Status implementace (2026-02-22)"
         },
         {
           "type": "table",
@@ -158,8 +207,10 @@
             ["Prompt cache / deduplication", "✅ HOTOVO", "_meta/token_tracker.py"],
             ["Sémantický vyhledávač kódu", "✅ HOTOVO", "_meta/chroma_indexer.py"],
             ["Model routing", "✅ HOTOVO", "_meta/token_tracker.py"],
+            ["Plugin orchestrator", "✅ HOTOVO", "_meta/orchestrator.py + plugins/"],
+            ["Semantic cache", "✅ HOTOVO", "_meta/semantic_cache.py"],
             ["Docs pipeline (JSON/Jinja2)", "✅ HOTOVO", "docs/build.py"],
-            ["Persistence paměti", "✅ HOTOVO", "memory/MEMORY.md + CLAUDE.md Golden Rule"]
+            ["Persistence paměti", "✅ HOTOVO", "memory/MEMORY.md + Golden Rules"]
           ]
         }
       ]
@@ -176,7 +227,91 @@
         {
           "type": "code",
           "lang": "text",
-          "text": "~/bin/agent  (router)\n    ├── log / billing / cache / route / init  →  _meta/token_tracker.py\n    └── index / search                         →  _meta/chroma_indexer.py\n\nDatabáze: ~/.ai-agent/\n    ├── tokens.db       — token log + prompt cache (SQLite)\n    └── code_index.db   — kódové chunky + numpy embeddingy (SQLite)\n\nOllama (lokální):\n    ├── nomic-embed-text  — embeddingy pro sémantické vyhledávání\n    └── qwen2.5-coder:14b — lokální LLM pro doc_update, boilerplate, info_sync\n\nPersistence: ~/.claude/projects/{hash}/memory/\n    ├── MEMORY.md       — auto-loaded při każdé session (volatile state)\n    └── session.md      — detailní session log"
+          "text": "~/bin/agent  (router)\n    ├── log / billing / cache / route / ask / init  →  _meta/token_tracker.py\n    └── index / search                              →  _meta/chroma_indexer.py\n\nOrchestrator pipeline:\n    1. Semantic cache lookup (nomic-embed-text)\n    2. Hash cache lookup (SHA-256, TTL-aware)\n    3. Backend routing (dle ROUTING_RULES)\n    4. Execute (Claude API / Ollama HTTP)\n    5. Log billing (SQLite)\n    6. Cache store (semantic + hash)\n\nDatabáze: ~/.ai-agent/\n    ├── tokens.db       — token log + hash cache + cache_embeddings\n    └── code_index.db   — kódové chunky + numpy embeddingy\n\nOllama (localhost:11434):\n    ├── nomic-embed-text:latest   — embeddingy pro semantic cache\n    ├── qwen2.5-coder:14b         — LOCAL_MODEL (doc_update, boilerplate, info_sync)\n    └── deepseek-coder:33b        — dostupný, nenakonfigurován v routeru\n\nPersistence: ~/.claude/projects/{hash}/memory/\n    ├── MEMORY.md       — auto-loaded session state\n    └── {hash}/         — per-project memory"
+        }
+      ]
+    },
+    {
+      "id": "ollama",
+      "title": "Ollama — instalace a modely",
+      "icon": "🦙",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Běží na <code>http://localhost:11434</code>. Orchestrátor automaticky detekuje dostupnost přes HTTP HEAD request."
+        },
+        {
+          "type": "heading",
+          "text": "Dostupné modely"
+        },
+        {
+          "type": "table",
+          "headers": ["Model", "Velikost", "Použití", "Status"],
+          "rows": [
+            ["nomic-embed-text:latest", "274 MB", "Embeddingy (semantic_cache, chroma_indexer)", "✅ aktivní"],
+            ["qwen2.5-coder:14b", "9.0 GB", "LOCAL_MODEL — doc_update, boilerplate, info_sync", "✅ aktivní"],
+            ["deepseek-coder:33b", "18 GB", "Dostupný, nenakonfigurován v ROUTING_RULES", "⚪ rezerva"]
+          ]
+        },
+        {
+          "type": "text",
+          "text": "Změna aktivního lokálního modelu: upravit <code>LOCAL_MODEL</code> v <code>_meta/router.py</code>."
+        }
+      ]
+    },
+    {
+      "id": "golden_rules",
+      "title": "Golden Rules — Session persistence",
+      "icon": "📜",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Detailní guide v <code>/home/geo/projects/CLAUDE.md</code>. Zde shrnutí klíčových pravidel."
+        },
+        {
+          "type": "heading",
+          "text": "Signální fráze"
+        },
+        {
+          "type": "table",
+          "headers": ["Fráze", "Kdy", "Co agent udělá"],
+          "rows": [
+            ["<strong>štafeta</strong>", "Předání jinému modelu (před /model)", "Aktualizuje oba MEMORY.md se shrnutím + specifikací. Bez git, bez sanitace."],
+            ["<strong>konec zvonec</strong>", "Konec práce, odhlášení", "Sanitace + oba MEMORY.md + MODEL.md session log + git commit + push"]
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "Pravidlo 1: Dual MEMORY.md (synchronizace)"
+        },
+        {
+          "type": "text",
+          "text": "Auto-load cesty dle CWD:<br/>• Start z <code>/home/geo/projects/</code> → <code>~/.claude/projects/-home-geo-projects/memory/MEMORY.md</code><br/>• Start z <code>/home/geo/</code> → <code>~/.claude/projects/-home-geo/memory/MEMORY.md</code><br/><br/>Při štafetě/konec zvonec: aktualizovat OBOU aby se kontext neztratil mezi session/modely."
+        },
+        {
+          "type": "heading",
+          "text": "Pravidlo 2: Model routing (3 role)"
+        },
+        {
+          "type": "table",
+          "headers": ["Model", "Role", "Odpovědnost", "Kdy"],
+          "rows": [
+            ["Opus 4.6", "Architekt", "Návrh, audit, složité problémy, specifikace", "Architektonická rozhodnutí"],
+            ["Sonnet 4.6", "SW inženýr", "Implementace + vlastník všech {projekt}/CLAUDE.md", "Veškerý kód + aktualizace kontextu"],
+            ["Haiku 4.5", "Dokumentarista", "POUZE docs/data/{projekt}.json → HTML pipeline", "Čte CLAUDE.md, negeneruje ho"]
+          ]
+        },
+        {
+          "type": "text",
+          "text": "<strong>Pravidlo vlastnictví CLAUDE.md:</strong><br/>• <code>{projekt}/CLAUDE.md</code> = výhradně Sonnet — píše, aktualizuje, refaktoruje<br/>• Haiku smí CLAUDE.md <strong>číst</strong>, ale <strong>NESMÍ ho modifikovat</strong><br/>• Výjimka: <code>memory/MEMORY.md</code> při štafetě/konec zvonec — všechny modely"
+        },
+        {
+          "type": "heading",
+          "text": "Pravidlo 3: Output stručnost — POVINNÉ"
+        },
+        {
+          "type": "text",
+          "text": "Maximální priorita: minimalizovat output tokeny (uživatel platí).<br/><br/>• <strong>Mezi tool cally:</strong> Žádný komentář pokud není architektonické rozhodnutí<br/>• <strong>Na začátku:</strong> Max 3 bullet points co se změní<br/>• <strong>Na konci:</strong> Max 3 bullet points co se změnilo<br/>• <strong>Vynechat:</strong> \"teď udělám X\", debug output, mechanický průběh"
         }
       ]
     },
@@ -232,6 +367,69 @@
       ]
     },
     {
+      "id": "orchestrator",
+      "title": "Orchestrator — Plugin middleware",
+      "icon": "🎭",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Plugin-based AI middleware s centrálním cache a billing. Nahrazuje monolitický token_tracker.py staré verze. Nový design: registry backendu, routing, modulární cache."
+        },
+        {
+          "type": "heading",
+          "text": "7-step pipeline"
+        },
+        {
+          "type": "list",
+          "ordered": true,
+          "entries": [
+            "Semantic cache lookup (nomic-embed-text embeddingy, cosine similarity)",
+            "Hash cache lookup (SHA-256, TTL-aware dle operace)",
+            "Router: select_backend() — vybere dostupný backend dle ROUTING_RULES",
+            "Execute: backend.execute() — zavolá Claude API nebo Ollama",
+            "Log billing — zaznamenná do SQLite tokens, cenu",
+            "Cache store — uloží do semantic_cache i hash_cache",
+            "Return Response — vrátí text, tokens, cenu, model"
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "CLI"
+        },
+        {
+          "type": "code",
+          "lang": "bash",
+          "text": "agent ask \"prompt\" --operation code_review --project X [--model auto]\nagent ask \"ahoj\" --model sonnet --project cli\n\n# Zobrazuje spinner během volání: ⠋ Zpracovávám... [claude-sonnet-4-6]"
+        },
+        {
+          "type": "heading",
+          "text": "Moduly (v _meta/)"
+        },
+        {
+          "type": "table",
+          "headers": ["Modul", "Role"],
+          "rows": [
+            ["plugins/base.py", "Backend ABC + Response dataclass"],
+            ["plugins/claude.py", "Anthropic API (is_available checks ANTHROPIC_API_KEY)"],
+            ["plugins/ollama.py", "Ollama HTTP (is_available checks localhost:11434)"],
+            ["billing.py", "DB, ceny, hash cache funcs"],
+            ["router.py", "ROUTING_RULES, select_backend(), CACHE_TTL"],
+            ["semantic_cache.py", "nomic-embed-text embeddingy, cosine similarity lookup"],
+            ["orchestrator.py", "Orchestrator class — core"]
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "Python API"
+        },
+        {
+          "type": "code",
+          "lang": "python",
+          "text": "from _meta.orchestrator import Orchestrator\nfrom _meta.plugins.claude import ClaudeBackend\nfrom _meta.plugins.ollama import OllamaBackend\n\norch = Orchestrator()\norch.register(ClaudeBackend())\norch.register(OllamaBackend())\n\nresp = orch.request(\n    messages   = [{'role': 'user', 'content': '...'}],\n    operation  = 'code_review',\n    project    = 'backup-dashboard',\n    model      = 'auto',  # → routing tabulka\n    system     = '...',   # volitelné\n    max_tokens = 4096,\n)\nprint(resp.text)\nprint(f\"Cost: ${resp.cost:.4f}\")"
+        }
+      ]
+    },
+    {
       "id": "semantic_search",
       "title": "Sémantické vyhledávání",
       "icon": "🔍",
@@ -242,7 +440,7 @@
         },
         {
           "type": "heading",
-          "text": "CLI príkazy"
+          "text": "CLI příkazy"
         },
         {
           "type": "code",
@@ -286,7 +484,7 @@
           "type": "card",
           "variant": "info",
           "title": "Klíčové pravidlo",
-          "text": "Pole pro seznam položek v JSON blocích se nazývá 'entries' (nikoli 'items' — items je Pythonova dict metoda a Jinja2 ji zachytí jako getattr dříve než dict klíč)."
+          "text": "Pole pro seznam položek v JSON blocích se nazývá <code>'entries'</code> (nikoli 'items' — items je Pythonova dict metoda a Jinja2 ji zachytí dříve než dict klíč)."
         }
       ]
     },
@@ -297,7 +495,7 @@
       "blocks": [
         {
           "type": "text",
-          "text": "Třívrstvý systém zachovávající kontext napřích seseionami a modelů. Řešení problému ztráty kontextu po odhlášení z Claude Code."
+          "text": "Třívrstvý systém zachovávající kontext napříč seseionami a modelů. Řešení problému ztráty kontextu po odhlášení z Claude Code."
         },
         {
           "type": "heading",
@@ -327,7 +525,7 @@
         },
         {
           "type": "heading",
-          "text": "Príští session"
+          "text": "Příští session"
         },
         {
           "type": "text",
@@ -343,71 +541,8 @@
           "rows": [
             ["CLAUDE.md", "/home/geo/projects/", "Master pravidla + golden rule", "Developer + AI"],
             ["MEMORY.md", "~/.claude/projects/.../memory/", "Volatile session state", "Jakýkoliv model"],
-            ["session.md", "~/.claude/projects/.../memory/", "Detailní session log", "Jakýkoliv model"],
             ["MODEL.md", "/home/geo/projects/", "AI handoff + architektura", "Jakýkoliv model"]
           ]
-        },
-        {
-          "type": "heading",
-          "text": "Praktický příklad"
-        },
-        {
-          "type": "code",
-          "lang": "text",
-          "text": "Session 1: Sonnet pracuje na dokumentaci\n  ↓ 'konec zvonec'\n  → MEMORY.md: 'Psáli jsme sekci Token Tracker, zbývá Routing'\n  → MODEL.md: 'Sonnet #4 — dokumentace AI projektu'\n\nSession 2: Haiku se přihlásí\n  ↓ MEMORY.md auto-load\n  ↓ Haiku vidí: 'Pokračuj v sekci Routing'\n  ✓ Bezpečně navazuje bez ztrát\n\nSession 3: Sonnet se vrátí\n  ↓ MEMORY.md stále zde\n  ↓ Vidí co Haiku udělal\n  ✓ Pokračuje dál"
-        },
-        {
-          "type": "card",
-          "variant": "warning",
-          "title": "⚠️ Zlaté pravidlo",
-          "text": "PŘED KONCEM JAKÉKOLIV SESSION řekni 'konec zvonec'. Bez tohoto kroku = kontext navždy ztracen."
-        }
-      ]
-    },
-    {
-      "id": "faq",
-      "title": "FAQ",
-      "icon": "❓",
-      "blocks": [
-        {
-          "type": "heading",
-          "text": "Otázka: Který model bych měl jakou operaci dát?"
-        },
-        {
-          "type": "text",
-          "text": "Haiku: dokumentace, AI pipeline. Sonnet: vývoj, architektura, struktura, kód. Opus: dlouhé analýzy, komplexní architektura. Model routing v token_tracker.py to rozhoduje automaticky."
-        },
-        {
-          "type": "heading",
-          "text": "Otázka: Jak se přihlásím bez ztráty kontextu?"
-        },
-        {
-          "type": "text",
-          "text": "Řekni 'konec zvonec' PŘED odhlášením. Já to uložím. Příště když se přihlásíš, MEMORY.md bude tu a já hned vímu co se dělalo."
-        },
-        {
-          "type": "heading",
-          "text": "Otázka: Kolik mě to bude stát?"
-        },
-        {
-          "type": "text",
-          "text": "Levné operace jdou na Ollama (zdarma). Drahé na Claude. Běž 'agent billing' a vidíš přesnou analýzu. Prompt cache (24h TTL) ušetří peníze na opakované dotazy."
-        },
-        {
-          "type": "heading",
-          "text": "Otázka: Co když se mi cache nehodí?"
-        },
-        {
-          "type": "text",
-          "text": "Operace 'code_review' a 'architecture' mají TTL=0 (cache vypnutý). Pro ostatní můžeš upravit CACHE_TTL v token_tracker.py."
-        },
-        {
-          "type": "heading",
-          "text": "Otázka: Jak najdu starou session?"
-        },
-        {
-          "type": "text",
-          "text": "MODEL.md SESSION LOG obsahuje všechny session od začátku. Nebo běž 'agent log --project X' a vidíš SQL zápisy. Archiv: 'tools/sanitize.py --target sessions' pro starší logy."
         }
       ]
     }

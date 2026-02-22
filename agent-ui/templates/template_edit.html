@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% set active = 'templates' %}
+{% block title %}Upravit šablonu — Agent UI{% endblock %}
+
+{% block content %}
+<section>
+  <h2>Upravit šablonu</h2>
+  <form method="post" action="/templates/{{ tmpl.id }}/edit">
+    <div class="form-row">
+      <label>Název</label>
+      <input type="text" name="name" value="{{ tmpl.name }}" style="max-width:300px;">
+    </div>
+    <div class="form-row">
+      <label>Obsah (system prompt)</label>
+      <textarea name="content" rows="8">{{ tmpl.content }}</textarea>
+    </div>
+    <button type="submit">Uložit</button>
+    <a href="/templates" style="margin-left:1rem; font-size:0.85rem;">Zrušit</a>
+  </form>
+</section>
+{% endblock %}

@@ -15,7 +15,7 @@ from _meta.billing import (
     init_db, hash_prompt, calc_cost,
     cache_lookup, cache_store, log_cache_hit,
 )
-from _meta.router import resolve_model, select_backend, get_cache_ttl
+from _meta.router import resolve_model, select_backend, get_cache_ttl, LOCAL_MODEL
 import _meta.semantic_cache as sem_cache
 
 
@@ -68,26 +68,28 @@ class Orchestrator:
         conn.close()
 
         # ── 3. Výběr backendu ────────────────────────────────────────────────
-        backend = select_backend(operation, self.backends)
-
-        # Určení modelu pro daný backend
         full_model = resolve_model(operation, model)
-        if backend.name == 'ollama':
-            exec_model = full_model  # 'ollama/<název>'
+        backend    = select_backend(operation, self.backends, model_hint=full_model)
+
+        # ── 4. Přiřazení exec_model ──────────────────────────────────────────
+        if backend.name == 'ollama' and not full_model.startswith('ollama/'):
+            # Fallback: Ollama vybrána pro cloud model → přepni na LOCAL_MODEL
+            exec_model = f'ollama/{LOCAL_MODEL}'
+            full_model = exec_model
         else:
             exec_model = full_model
 
-        # ── 4. Execute ───────────────────────────────────────────────────────
+        # ── 5. Execute ───────────────────────────────────────────────────────
         resp = backend.execute(messages, exec_model, system, max_tokens)
 
-        # ── 5. Billing log + hash cache ──────────────────────────────────────
+        # ── 6. Billing log + hash cache ──────────────────────────────────────
         conn = init_db()
         cache_store(conn, project, operation, resp.model,
                     resp.tokens_in, resp.tokens_out, resp.cost,
                     phash, resp.text, notes)
         conn.close()
 
-        # ── 5b. Sémantická cache store ───────────────────────────────────────
+        # ── 6b. Sémantická cache store ───────────────────────────────────────
         if ttl > 0:
             sem_cache.store(prompt_text, resp.text, operation, resp.model)
 

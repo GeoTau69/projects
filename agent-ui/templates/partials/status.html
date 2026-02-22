@@ -1,0 +1,10 @@
+{% for backend in backends %}
+<div class="row">
+  <div class="dot {% if backend.available %}dot-green{% else %}dot-red{% endif %}"></div>
+  <div style="min-width: 220px;">{{ backend.name }}</div>
+  <div style="flex: 1; color: #484f58; font-size: 0.8rem;">{{ backend.note }}</div>
+  <div class="badge {% if backend.available %}badge-ok{% else %}badge-err{% endif %}">
+    {% if backend.available %}ONLINE{% else %}OFFLINE{% endif %}
+  </div>
+</div>
+{% endfor %}

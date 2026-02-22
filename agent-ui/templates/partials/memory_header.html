@@ -1,0 +1,21 @@
+{% macro mini_bar(pct) %}<span style="display:inline-block;width:60px;height:6px;background:#21262d;border-radius:3px;vertical-align:middle;margin:0 4px;"><span style="display:block;height:100%;width:{{ pct }}%;background:{% if pct > 85 %}#f85149{% elif pct > 60 %}#d29922{% else %}#3fb950{% endif %};border-radius:3px;"></span></span>{% endmacro %}
+<span style="color:#484f58;font-size:0.75rem;">
+{% if mem.ram and not mem.ram.error is defined %}
+  <span style="color:{% if mem.ram.pct > 85 %}#f85149{% elif mem.ram.pct > 60 %}#d29922{% else %}#8b949e{% endif %};">RAM</span>
+  {{ mini_bar(mem.ram.pct) }}
+  <span>{{ mem.ram.used_gb }}/{{ mem.ram.total_gb }} GB</span>
+{% endif %}
+{% if mem.gpus %}
+  {% for gpu in mem.gpus %}
+  &nbsp;·&nbsp;
+  <span style="color:{% if gpu.pct > 85 %}#f85149{% elif gpu.pct > 60 %}#d29922{% else %}#8b949e{% endif %};">VRAM</span>
+  {{ mini_bar(gpu.pct) }}
+  <span>{{ gpu.used_gb }}/{{ gpu.total_gb }} GB</span>
+  {% endfor %}
+{% endif %}
+{% if mem.ollama_loaded %}
+  &nbsp;·&nbsp;
+  <span style="color:#d29922;">⬤</span>
+  <span style="color:#d29922;">{{ mem.ollama_loaded | join(', ') }}</span>
+{% endif %}
+</span>

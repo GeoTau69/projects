@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% set active = 'conversations' %}
+{% block title %}Konverzace — Agent UI{% endblock %}
+
+{% block content %}
+<section>
+  <h2>Konverzace</h2>
+  <form method="post" action="/conversations/new" style="margin-bottom:1rem;">
+    <button type="submit">+ Nová konverzace</button>
+  </form>
+
+  {% if convs %}
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Název</th>
+        <th>Zprávy</th>
+        <th>Vytvořena</th>
+        <th>Status</th>
+        <th>Souhrny</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for c in convs %}
+    <tr>
+      <td style="color:#484f58;">{{ c.id }}</td>
+      <td class="hi">
+        <a href="/ask?conv={{ c.id }}">
+          {{ c.name or '(bez názvu)' }}
+        </a>
+      </td>
+      <td>{{ c.msg_count }}</td>
+      <td style="color:#484f58; white-space:nowrap;">{{ c.created_at[:16] }}</td>
+      <td>
+        {% if c.is_closed %}
+          <span class="badge badge-warn">UZAVŘENA</span>
+        {% else %}
+          <span class="badge badge-ok">AKTIVNÍ</span>
+        {% endif %}
+      </td>
+      <td>
+        <span id="summ-{{ c.id }}"
+          {% if c.is_closed %}
+          hx-get="/conversations/{{ c.id }}/summaries"
+          hx-trigger="load"
+          hx-target="#summ-{{ c.id }}"
+          hx-swap="outerHTML"
+          {% endif %}>
+          {% if not c.is_closed %}—{% else %}…{% endif %}
+        </span>
+      </td>
+      <td>
+        <a href="/ask?conv={{ c.id }}" style="font-size:0.75rem;">otevřít</a>
+        {% if not c.is_closed %}
+        &nbsp;
+        <form method="post" action="/conversations/{{ c.id }}/close" style="display:inline;">
+          <button type="submit" style="background:none; border:none; color:#f85149; cursor:pointer; font-size:0.75rem; padding:0;">ukončit</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <div style="color:#484f58; font-size:0.85rem;">Zatím žádné konverzace.</div>
+  {% endif %}
+</section>
+{% endblock %}

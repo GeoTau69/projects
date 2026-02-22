@@ -1,0 +1,20 @@
+{% set models = ['qwen', 'deepseek', 'haiku'] %}
+{% set done = summaries | map(attribute='model') | list %}
+{% for m in models %}
+  {% if m in done %}
+    {% for s in summaries %}{% if s.model == m %}
+    <span style="color:#3fb950; font-size:0.75rem;" title="{{ s.content[:100] }}">
+      ✓ {{ m }} ({{ s.word_count }}sl/{{ s.gen_time_ms }}ms)
+    </span>
+    {% endif %}{% endfor %}
+  {% else %}
+    <span style="color:#484f58; font-size:0.75rem;"
+          hx-get="/conversations/{{ conv_id }}/summaries"
+          hx-trigger="every 5s"
+          hx-target="closest div"
+          hx-swap="outerHTML">
+      ⟳ {{ m }}
+    </span>
+  {% endif %}
+  {% if not loop.last %}&nbsp;{% endif %}
+{% endfor %}
