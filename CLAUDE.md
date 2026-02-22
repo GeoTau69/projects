@@ -29,30 +29,43 @@ Fedora server: LAN `192.168.0.101` · Tailscale `fedora` / `100.117.55.88`
 - Každý projekt má: `project.yaml` (metadata) + `CLAUDE.md` (kontext)
 - Backup soubory (`*.backup-*`) neverzovat · privilegované příkazy přes `sudo`
 
-### Stručnost výstupu — úspora output tokenů
+### Stručnost výstupu — POVINNÉ, úspora output tokenů
 
-- Při editaci/vytváření souborů: jen stavový řádek `aktualizuji> soubor` nebo `vytvářím> soubor`
-- Žádný výpis obsahu který se zapisuje — uživatel si přečte soubor sám
-- Na začátku úkolu: bullet points co se bude měnit
-- Na konci úkolu: bullet points co se změnilo
-- Shrnutí, tabulky, návrhy variant, architektonická rozhodnutí: **zachovat plně**
-- Mechanický průběh (co kam kopíruji, jaký řádek měním): **vynechat**
+<!-- DOKUMENTACE: Output tokeny platí uživatel. Každý zbytečný text = zbytečný náklad.
+     Diff výpisy (● Update... ⎿ Added X lines...) generuje Claude Code CLI LOKÁLNĚ
+     bez spotřeby tokenů — to je OK. Problém jsou pouze textové zprávy modelu
+     mezi tool cally — ty stojí output tokeny a musí být minimální. -->
+
+**TOTO JE NEJVYŠŠÍ PRIORITA pro všechny modely.**
+
+- **ŽÁDNÝ komentář mezi tool cally** pokud není architektonické rozhodnutí
+- Při editaci/vytváření: žádný text, rovnou tool call
+- Na začátku úkolu: max 3 bullet points co se změní
+- Na konci úkolu: max 3 bullet points co se změnilo
+- Shrnutí, tabulky, návrhy variant: **zachovat plně**
+- Mechanický průběh, debug, "teď udělám X": **VYNECHAT**
+- Uživatel platí za KAŽDÝ output token — plýtvání = plýtvání penězi
 
 ## Dělba práce — Model routing
 
 | Model | Role | Odpovědnost | Kdy použít |
 |-------|------|-------------|------------|
 | **Opus 4.6** | Architekt | Návrh architektury, audit, složité problémy, specifikace | Nové systémy, architektonická rozhodnutí, review |
-| **Sonnet 4.6** | SW inženýr | Implementace dle specifikace, vývoj, refactoring, kód | Psaní kódu, úpravy souborů, mechanické operace |
-| **Haiku 4.5** | Dokumentarista | Generování dokumentace z CLAUDE.md → JSON → HTML | `docs/data/{projekt}.json` pipeline |
+| **Sonnet 4.6** | SW inženýr | Implementace dle specifikace, vývoj, refactoring, kód + **vlastník všech `CLAUDE.md`** | Psaní kódu, úpravy souborů, aktualizace kontextu projektu |
+| **Haiku 4.5** | Dokumentarista | **Pouze** generování `docs/data/{projekt}.json` z CLAUDE.md → HTML | `docs/data/{projekt}.json` pipeline — čte, negeneruje CLAUDE.md |
 
 Workflow:
 1. **Opus** navrhne architekturu → zapíše specifikaci do MEMORY.md / MODEL.md
-2. **Sonnet** implementuje dle specifikace + aktualizuje `{projekt}/CLAUDE.md`
+2. **Sonnet** implementuje dle specifikace + **aktualizuje `{projekt}/CLAUDE.md`**
 3. **Haiku** čte CLAUDE.md → generuje `docs/data/{projekt}.json` → `build.py` renderuje HTML
 4. Dokumentace se automaticky zobrazí v portálu s 📖 ikonou
 
-Cenový princip: Opus ($75/M out) jen na architektonické rozhodování. Sonnet ($15/M out) na veškerou implementaci. Haiku ($4/M out) na dokumentaci.
+**Pravidlo vlastnictví CLAUDE.md:**
+- `{projekt}/CLAUDE.md` = **výhradně Sonnet** — píše, aktualizuje, refaktoruje
+- Haiku smí číst CLAUDE.md pro JSON generování, ale **NESMÍ ho modifikovat**
+- Výjimka: MEMORY.md soubory při `štafeta`/`konec zvonec` — všechny modely
+
+Cenový princip: Opus ($75/M out) jen na architektonické rozhodování. Sonnet ($15/M out) na implementaci + CLAUDE.md. Haiku ($4/M out) na JSON/HTML pipeline.
 
 ## Kontextové soubory
 

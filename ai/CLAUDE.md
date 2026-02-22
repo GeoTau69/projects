@@ -142,13 +142,18 @@ Auto-load cesty dle CWD:
 | Model | Role | Odpovědnost | Kdy |
 |-------|------|-------------|-----|
 | **Opus 4.6** | Architekt | Návrh, audit, složité problémy, specifikace | Architektonická rozhodnutí |
-| **Sonnet 4.6** | SW inženýr | Implementace dle specifikace, vývoj, refactoring | Veškerý kód |
-| **Haiku 4.5** | Dokumentarista | Generování docs z CLAUDE.md → JSON → HTML | `docs/data/{projekt}.json` |
+| **Sonnet 4.6** | SW inženýr | Implementace + **vlastník všech `{projekt}/CLAUDE.md`** | Veškerý kód + aktualizace kontextu |
+| **Haiku 4.5** | Dokumentarista | **Pouze** `docs/data/{projekt}.json` → HTML pipeline | Čte CLAUDE.md, negeneruje ho |
 
 Workflow:
 1. **Opus** navrhne architekturu → zapíše spec do MEMORY.md
-2. **Sonnet** implementuje dle spec + aktualizuje `{projekt}/CLAUDE.md`
+2. **Sonnet** implementuje dle spec + **aktualizuje `{projekt}/CLAUDE.md`**
 3. **Haiku** čte CLAUDE.md → generuje `docs/data/{projekt}.json` → `build.py` renderuje HTML
+
+**Pravidlo vlastnictví CLAUDE.md:**
+- `{projekt}/CLAUDE.md` = **výhradně Sonnet** — píše, aktualizuje, refaktoruje
+- Haiku smí CLAUDE.md **číst**, ale **NESMÍ ho modifikovat**
+- Výjimka: `memory/MEMORY.md` při `štafeta`/`konec zvonec` — všechny modely
 
 ### Pravidlo 3: Output stručnost — POVINNÉ
 
