@@ -11,15 +11,14 @@ Použití (CLI):
   agent cache --stats | --list | --clear [--all]
   agent route --show
   agent route --test doc_update
+  agent ask "prompt" --operation code_review --project X [--model auto]
   agent init
 
 Použití (Python import):
   from _meta.token_tracker import call_api
-  # model='auto' → routing tabulka rozhodne (local nebo cloud)
   text = call_api('my-project', 'doc_update', 'auto', [
       {'role': 'user', 'content': 'Vygeneruj dokumentaci pro ...'}
   ])
-  # Automaticky: routing → cache lookup → API call → log
 """
 
 import sqlite3
@@ -29,54 +28,18 @@ import json
 import datetime
 from pathlib import Path
 
-# ─── Konfigurace ─────────────────────────────────────────────────────────────
+# ─── Importy z nových modulů ─────────────────────────────────────────────────
 
-DB_DIR  = Path.home() / '.ai-agent'
-DB_PATH = DB_DIR / 'tokens.db'
-
-# Ceny v USD za 1M tokenů — aktualizovat dle anthropic.com/pricing
-MODEL_PRICES: dict[str, dict] = {
-    'claude-opus-4-6':   {'in': 15.00, 'out': 75.00},
-    'claude-sonnet-4-6': {'in':  3.00, 'out': 15.00},
-    'claude-haiku-4-5':  {'in':  0.80, 'out':  4.00},
-    # Aliasy (zkrácené názvy)
-    'opus':              {'in': 15.00, 'out': 75.00},
-    'sonnet':            {'in':  3.00, 'out': 15.00},
-    'haiku':             {'in':  0.80, 'out':  4.00},
-}
-
-MODEL_ALIASES = {
-    'opus':   'claude-opus-4-6',
-    'sonnet': 'claude-sonnet-4-6',
-    'haiku':  'claude-haiku-4-5',
-}
-
-# Model routing — automatické přepínání Ollama ↔ Claude API dle typu operace.
-# Hodnoty: 'local' = Ollama, 'sonnet'/'opus'/'haiku' = Claude API alias.
-ROUTING_RULES: dict[str, str] = {
-    'doc_update':    'local',    # Ollama — generování dokumentace
-    'boilerplate':   'local',    # Ollama — šablony a kostry kódu
-    'info_sync':     'local',    # Ollama — synchronizace SYNC bloků
-    'code_review':   'sonnet',   # Claude Sonnet — analýza kódu
-    'architecture':  'opus',     # Claude Opus — architektonická rozhodnutí
-    'debug_complex': 'sonnet',   # Claude Sonnet — složité debugování
-    '_default':      'sonnet',   # výchozí pro neznámé operace
-}
-
-# Lokální Ollama model pro operace routované na 'local'
-LOCAL_MODEL = 'qwen2.5-coder:14b'
-OLLAMA_CHAT_URL = 'http://localhost:11434/api/chat'
-
-# Cache TTL v hodinách per typ operace. 0 = cache zakázána.
-CACHE_TTL: dict[str, int] = {
-    'doc_update':   24,
-    'boilerplate':  48,
-    'info_sync':    12,
-    'code_review':   0,   # žádná cache — vždy čerstvá analýza
-    'architecture':  0,   # žádná cache
-    'debug':         0,   # žádná cache
-    '_default':     24,
-}
+from _meta.billing import (
+    DB_DIR, DB_PATH,
+    MODEL_PRICES, MODEL_ALIASES,
+    init_db, normalize_model, calc_cost, hash_prompt,
+    cache_lookup, cache_store, log_cache_hit,
+)
+from _meta.router import (
+    ROUTING_RULES, CACHE_TTL, LOCAL_MODEL, OLLAMA_CHAT_URL,
+    resolve_model, get_cache_ttl,
+)
 
 # ─── ANSI barvy ───────────────────────────────────────────────────────────────
 
@@ -92,260 +55,24 @@ def bold(s: str) -> str:
     return f'\033[1m{s}{R}'
 
 
-# ─── DB ───────────────────────────────────────────────────────────────────────
-
-def init_db() -> sqlite3.Connection:
-    """Inicializuje ~/.ai-agent/tokens.db, provede migraci nových sloupců."""
-    DB_DIR.mkdir(exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS token_log (
-            id            INTEGER PRIMARY KEY,
-            timestamp     DATETIME DEFAULT CURRENT_TIMESTAMP,
-            project       VARCHAR(50),
-            operation     VARCHAR(50),
-            model         VARCHAR(30),
-            tokens_in     INTEGER,
-            tokens_out    INTEGER,
-            cost_usd      DECIMAL(10,6),
-            prompt_hash   VARCHAR(64),
-            notes         TEXT,
-            response_text TEXT,
-            cache_hit     INTEGER DEFAULT 0
-        )
-    """)
-    # Migrace: přidej nové sloupce pokud DB existovala bez nich
-    for sql in [
-        "ALTER TABLE token_log ADD COLUMN response_text TEXT",
-        "ALTER TABLE token_log ADD COLUMN cache_hit INTEGER DEFAULT 0",
-    ]:
-        try:
-            conn.execute(sql)
-        except sqlite3.OperationalError:
-            pass  # sloupec již existuje
-    conn.commit()
-    return conn
-
-
-def normalize_model(model: str) -> str:
-    """Převede alias na plný název modelu."""
-    return MODEL_ALIASES.get(model.lower(), model)
-
-
-def calc_cost(model: str, tokens_in: int, tokens_out: int) -> float:
-    """Vypočítá cenu v USD podle cen modelu."""
-    prices = MODEL_PRICES.get(model) or MODEL_PRICES.get(model.lower())
-    if not prices:
-        for part in model.lower().split('-'):
-            if part in MODEL_PRICES:
-                prices = MODEL_PRICES[part]
-                break
-    if not prices:
-        return 0.0
-    return (tokens_in * prices['in'] + tokens_out * prices['out']) / 1_000_000
-
-
-# ─── Cache — knihovní funkce ──────────────────────────────────────────────────
-
-def get_cache_ttl(operation: str) -> int:
-    """Vrátí TTL v hodinách pro danou operaci. 0 = žádná cache."""
-    return CACHE_TTL.get(operation, CACHE_TTL['_default'])
-
-
-def hash_prompt(messages: list[dict], system: str | None = None) -> str:
-    """SHA-256 hash obsahu promptu (deterministický, bez metadat)."""
-    content = json.dumps(
-        {'system': system or '', 'messages': messages},
-        sort_keys=True, ensure_ascii=False
-    )
-    return hashlib.sha256(content.encode()).hexdigest()
-
-
-def cache_lookup(conn: sqlite3.Connection, prompt_hash: str,
-                 operation: str) -> str | None:
-    """
-    Hledá platnou cached odpověď v DB.
-    Vrátí response_text pokud nalezena a v rámci TTL, jinak None.
-    """
-    ttl = get_cache_ttl(operation)
-    if ttl == 0:
-        return None  # cache zakázána pro tuto operaci
-
-    row = conn.execute("""
-        SELECT response_text FROM token_log
-        WHERE prompt_hash = ?
-          AND operation   = ?
-          AND (cache_hit = 0 OR cache_hit IS NULL)
-          AND response_text IS NOT NULL
-          AND response_text != ''
-          AND timestamp >= DATETIME('now', ? || ' hours')
-        ORDER BY timestamp DESC
-        LIMIT 1
-    """, (prompt_hash, operation, f'-{ttl}')).fetchone()
-
-    return row['response_text'] if row else None
-
-
-def cache_store(conn: sqlite3.Connection, project: str, operation: str,
-                model: str, tokens_in: int, tokens_out: int, cost: float,
-                prompt_hash: str, response_text: str, notes: str = '') -> None:
-    """Uloží výsledek reálného API volání (cache_hit=0) včetně textu odpovědi."""
-    conn.execute(
-        """INSERT INTO token_log
-           (project, operation, model, tokens_in, tokens_out, cost_usd,
-            prompt_hash, notes, response_text, cache_hit)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)""",
-        (project, operation, model, tokens_in, tokens_out, cost,
-         prompt_hash, notes, response_text)
-    )
-    conn.commit()
-
-
-def log_cache_hit(conn: sqlite3.Connection, project: str, operation: str,
-                  model: str, prompt_hash: str) -> None:
-    """Zaznamená cache hit — 0 tokenů, $0, cache_hit=1."""
-    conn.execute(
-        """INSERT INTO token_log
-           (project, operation, model, tokens_in, tokens_out, cost_usd,
-            prompt_hash, cache_hit)
-           VALUES (?, ?, ?, 0, 0, 0.0, ?, 1)""",
-        (project, operation, model, prompt_hash)
-    )
-    conn.commit()
-
-
-# ─── Model routing ───────────────────────────────────────────────────────────
-
-def resolve_model(operation: str, model: str) -> str:
-    """
-    Rozhodne jaký model použít.
-      'auto'  → ROUTING_RULES[operation] nebo '_default'
-      'local' → LOCAL_MODEL s prefixem 'ollama/'
-      alias   → plný název Claude modelu (normalize_model)
-    Vrátí buď 'ollama/<název>' nebo plný Claude model string.
-    """
-    if model == 'auto':
-        dest = ROUTING_RULES.get(operation, ROUTING_RULES['_default'])
-    else:
-        dest = model
-
-    if dest == 'local':
-        return f'ollama/{LOCAL_MODEL}'
-    return normalize_model(dest)
-
-
-def call_api_ollama(project: str, operation: str, ollama_model: str,
-                    messages: list[dict], system: str | None,
-                    max_tokens: int, phash: str, notes: str) -> str:
-    """
-    Volá lokální Ollama model přes HTTP API.
-    ollama_model je ve formátu 'ollama/<název>', např. 'ollama/qwen2.5-coder:14b'.
-    """
-    import urllib.request
-    import urllib.error
-
-    model_name = ollama_model.removeprefix('ollama/')
-
-    # Ollama chat API — system message jako první zpráva role=system
-    ollama_messages = []
-    if system:
-        ollama_messages.append({'role': 'system', 'content': system})
-    ollama_messages.extend(messages)
-
-    payload = json.dumps({
-        'model':    model_name,
-        'messages': ollama_messages,
-        'stream':   False,
-        'options':  {'num_predict': max_tokens},
-    }).encode()
-
-    req = urllib.request.Request(
-        OLLAMA_CHAT_URL, data=payload,
-        headers={'Content-Type': 'application/json'}
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=120) as r:
-            data = json.loads(r.read())
-    except urllib.error.URLError as e:
-        raise RuntimeError(
-            f"Ollama nedostupná ({OLLAMA_CHAT_URL}): {e}\n"
-            "  Spusť: ollama serve"
-        )
-
-    text       = data['message']['content']
-    tokens_in  = data.get('prompt_eval_count', 0)
-    tokens_out = data.get('eval_count', 0)
-
-    conn = init_db()
-    cache_store(conn, project, operation, ollama_model,
-                tokens_in, tokens_out, 0.0, phash, text, notes)
-    conn.close()
-    return text
-
-
-# ─── API wrapper ─────────────────────────────────────────────────────────────
+# ─── Zpětně kompatibilní call_api wrapper ────────────────────────────────────
 
 def call_api(project: str, operation: str, model: str,
              messages: list[dict], system: str | None = None,
              max_tokens: int = 4096, notes: str = '') -> str:
     """
     Volá API s automatickým routingem, cache a logováním.
-
-    model='auto' → routing tabulka (ROUTING_RULES) rozhodne dle operation.
-    model='local' → vždy Ollama LOCAL_MODEL.
-    model='sonnet'/'opus'/... → vždy daný Claude model.
-
-    Postup:
-      1. resolve_model() → zjistí cílový model (ollama/X nebo claude-X)
-      2. cache_lookup() → vrátí cached odpověď pokud v TTL
-      3a. Cache hit  → log hit ($0), vrátí odpověď
-      3b. Cache miss → API call (Ollama nebo Anthropic), log + cache_store
+    Zachováno pro zpětnou kompatibilitu — deleguje na Orchestrator.
     """
-    full_model = resolve_model(operation, model)
-    phash      = hash_prompt(messages, system)
-    conn       = init_db()
+    from _meta.orchestrator import Orchestrator
+    from _meta.plugins.claude import ClaudeBackend
+    from _meta.plugins.ollama import OllamaBackend
 
-    # ── Cache lookup ──────────────────────────────────────────────────────────
-    cached = cache_lookup(conn, phash, operation)
-    if cached:
-        log_cache_hit(conn, project, operation, full_model, phash)
-        conn.close()
-        return cached
-    conn.close()
-
-    # ── Routing: Ollama nebo Anthropic ────────────────────────────────────────
-    if full_model.startswith('ollama/'):
-        return call_api_ollama(project, operation, full_model,
-                               messages, system, max_tokens, phash, notes)
-
-    # ── Anthropic API ─────────────────────────────────────────────────────────
-    try:
-        import anthropic as ant
-    except ImportError:
-        raise ImportError(
-            "Chybí balíček 'anthropic'.\n"
-            "  pip install anthropic\n"
-            "  export ANTHROPIC_API_KEY=sk-ant-..."
-        )
-
-    kwargs: dict = dict(model=full_model, max_tokens=max_tokens, messages=messages)
-    if system:
-        kwargs['system'] = system
-
-    client   = ant.Anthropic()
-    response = client.messages.create(**kwargs)
-
-    text       = response.content[0].text
-    tokens_in  = response.usage.input_tokens
-    tokens_out = response.usage.output_tokens
-    cost       = calc_cost(full_model, tokens_in, tokens_out)
-
-    conn = init_db()
-    cache_store(conn, project, operation, full_model,
-                tokens_in, tokens_out, cost, phash, text, notes)
-    conn.close()
-    return text
+    orch = Orchestrator()
+    orch.register(ClaudeBackend())
+    orch.register(OllamaBackend())
+    resp = orch.request(messages, operation, project, model, system, max_tokens, notes)
+    return resp.text
 
 
 # ─── Příkaz: log ─────────────────────────────────────────────────────────────
@@ -380,7 +107,6 @@ def cmd_log(args: argparse.Namespace) -> None:
 def cmd_billing(args: argparse.Namespace) -> None:
     conn = init_db()
 
-    # Sestavení WHERE podmínek (vždy vyloučit cache_hit=1)
     conditions: list[str] = ["(cache_hit = 0 OR cache_hit IS NULL)"]
     params: list = []
 
@@ -402,12 +128,10 @@ def cmd_billing(args: argparse.Namespace) -> None:
 
     where = 'WHERE ' + ' AND '.join(conditions)
 
-    # Stejné podmínky pro cache hity (bez cache_hit=0 filtru)
     hit_conds = [c for c in conditions if 'cache_hit' not in c]
     hit_conds.append("cache_hit = 1")
     hit_where = 'WHERE ' + ' AND '.join(hit_conds)
 
-    # ── Top operace ───────────────────────────────────────────────────────────
     if getattr(args, 'top', False):
         rows = conn.execute(f"""
             SELECT operation, project,
@@ -431,7 +155,6 @@ def cmd_billing(args: argparse.Namespace) -> None:
         conn.close()
         return
 
-    # ── Souhrn ────────────────────────────────────────────────────────────────
     summary = conn.execute(f"""
         SELECT COUNT(*)        AS calls,
                SUM(tokens_in)  AS t_in,
@@ -440,12 +163,10 @@ def cmd_billing(args: argparse.Namespace) -> None:
         FROM token_log {where}
     """, params).fetchone()
 
-    # ── Cache hity + odhad úspor ──────────────────────────────────────────────
     cache_stats = conn.execute(f"""
         SELECT COUNT(*) AS hits FROM token_log {hit_where}
     """, params).fetchone()
 
-    # Odhad úspor: najít originální volání pro každý hit (subquery místo JOIN s aliasem)
     saved = conn.execute(f"""
         SELECT COALESCE(SUM(cost_usd), 0.0) AS saved_cost
         FROM token_log
@@ -454,7 +175,6 @@ def cmd_billing(args: argparse.Namespace) -> None:
           AND response_text IS NOT NULL
     """, params).fetchone()
 
-    # ── Po modelu ─────────────────────────────────────────────────────────────
     by_model = conn.execute(f"""
         SELECT model,
                COUNT(*)        AS calls,
@@ -466,7 +186,6 @@ def cmd_billing(args: argparse.Namespace) -> None:
         ORDER BY cost DESC
     """, params).fetchall()
 
-    # ── Poslední záznamy ──────────────────────────────────────────────────────
     recent = conn.execute(f"""
         SELECT timestamp, project, operation, model,
                tokens_in, tokens_out, cost_usd
@@ -477,7 +196,6 @@ def cmd_billing(args: argparse.Namespace) -> None:
 
     conn.close()
 
-    # ── Výpis ─────────────────────────────────────────────────────────────────
     period = ''
     if getattr(args, 'today', False):   period = '(dnes)'
     elif getattr(args, 'week', False):  period = '(posledních 7 dní)'
@@ -533,7 +251,6 @@ def cmd_billing(args: argparse.Namespace) -> None:
 def cmd_cache(args: argparse.Namespace) -> None:
     conn = init_db()
 
-    # ── Statistiky ────────────────────────────────────────────────────────────
     if getattr(args, 'stats', False):
         total_cached = conn.execute("""
             SELECT COUNT(*) AS n FROM token_log
@@ -541,7 +258,6 @@ def cmd_cache(args: argparse.Namespace) -> None:
               AND response_text IS NOT NULL AND response_text != ''
         """).fetchone()['n']
 
-        # Platné (v rámci TTL) — approximace: záznamy mladší než nejkratší nenulové TTL
         min_ttl = min(v for v in CACHE_TTL.values() if v > 0)
         valid_cached = conn.execute(f"""
             SELECT COUNT(*) AS n FROM token_log
@@ -559,7 +275,6 @@ def cmd_cache(args: argparse.Namespace) -> None:
             WHERE (cache_hit = 0 OR cache_hit IS NULL)
         """).fetchone()['n']
 
-        # Ušetřené tokeny + cena (lookup přes prompt_hash)
         saved = conn.execute("""
             SELECT COALESCE(SUM(orig.tokens_in),  0) AS t_in,
                    COALESCE(SUM(orig.tokens_out), 0) AS t_out,
@@ -591,7 +306,6 @@ def cmd_cache(args: argparse.Namespace) -> None:
         conn.close()
         return
 
-    # ── Seznam cached odpovědí ────────────────────────────────────────────────
     if getattr(args, 'list', False):
         rows = conn.execute("""
             SELECT timestamp, project, operation, model,
@@ -623,10 +337,8 @@ def cmd_cache(args: argparse.Namespace) -> None:
         conn.close()
         return
 
-    # ── Smazání ───────────────────────────────────────────────────────────────
     if getattr(args, 'clear', False):
         if getattr(args, 'all', False):
-            # Smazat text ze všech záznamů (zachovat logy)
             c = conn.execute("""
                 UPDATE token_log SET response_text = NULL
                 WHERE response_text IS NOT NULL
@@ -634,7 +346,6 @@ def cmd_cache(args: argparse.Namespace) -> None:
             conn.commit()
             print(f"{Y}✓ Cache vymazána:{R} {c.rowcount} záznamů")
         else:
-            # Smazat pouze expirované záznamy (starší než nejdelší TTL)
             max_ttl = max(v for v in CACHE_TTL.values() if v > 0)
             c = conn.execute(f"""
                 UPDATE token_log SET response_text = NULL
@@ -647,7 +358,6 @@ def cmd_cache(args: argparse.Namespace) -> None:
         conn.close()
         return
 
-    # Žádný flag → help
     print(f"Použití: agent cache --stats | --list | --clear [--all]")
     conn.close()
 
@@ -655,7 +365,6 @@ def cmd_cache(args: argparse.Namespace) -> None:
 # ─── Příkaz: route ───────────────────────────────────────────────────────────
 
 def cmd_route(args: argparse.Namespace) -> None:
-    """Zobrazí routing tabulku nebo otestuje routing pro konkrétní operaci."""
     if getattr(args, 'test', None):
         op    = args.test
         dest  = resolve_model(op, 'auto')
@@ -667,7 +376,6 @@ def cmd_route(args: argparse.Namespace) -> None:
         print(f"\n  {D}Operace:{R} {Y}{op}{R}  →  {label}  {note}\n")
         return
 
-    # ── Zobrazit celou tabulku ────────────────────────────────────────────────
     print(f"\n{bold('ROUTING TABULKA')}")
     print(f"  {D}Lokální model: {R}{C}{LOCAL_MODEL}{R}")
     print()
@@ -678,14 +386,13 @@ def cmd_route(args: argparse.Namespace) -> None:
             continue
         resolved = resolve_model(op, 'auto')
         if resolved.startswith('ollama/'):
-            dest_label = f"{G}local{R}"
+            dest_label  = f"{G}local{R}"
             model_label = f"{G}{resolved.removeprefix('ollama/')}{R}"
         else:
-            dest_label = f"{C}cloud{R}"
+            dest_label  = f"{C}cloud{R}"
             model_label = f"{C}{resolved}{R}"
         print(f"  {Y}{op:<20}{R} {dest_label:<20}  {model_label}")
 
-    # Výchozí
     default_resolved = resolve_model('unknown_op', 'auto')
     if default_resolved.startswith('ollama/'):
         dl = f"{G}local{R}"; ml = f"{G}{default_resolved.removeprefix('ollama/')}{R}"
@@ -694,7 +401,6 @@ def cmd_route(args: argparse.Namespace) -> None:
     print(f"  {D}{'_default (ostatní)':<20}{R} {dl:<20}  {ml}")
     print()
 
-    # Statistiky z DB: kolik volání šlo kam
     conn = init_db()
     local_calls = conn.execute("""
         SELECT COUNT(*) AS n, COALESCE(SUM(tokens_in+tokens_out),0) AS tokens
@@ -717,6 +423,73 @@ def cmd_route(args: argparse.Namespace) -> None:
         print()
 
 
+# ─── Spinner ─────────────────────────────────────────────────────────────────
+
+import threading
+import sys
+import time
+import itertools
+
+
+class Spinner:
+    """Blokující spinner — zobrazuje se dokud neběží API volání."""
+    _FRAMES = '⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+
+    def __init__(self, label: str) -> None:
+        self._label   = label
+        self._stop    = threading.Event()
+        self._thread  = threading.Thread(target=self._spin, daemon=True)
+
+    def _spin(self) -> None:
+        for frame in itertools.cycle(self._FRAMES):
+            if self._stop.is_set():
+                break
+            sys.stderr.write(f'\r{C}{frame}{R} {self._label}')
+            sys.stderr.flush()
+            time.sleep(0.08)
+
+    def __enter__(self):
+        self._thread.start()
+        return self
+
+    def __exit__(self, *_):
+        self._stop.set()
+        self._thread.join()
+        sys.stderr.write('\r' + ' ' * (len(self._label) + 4) + '\r')
+        sys.stderr.flush()
+
+
+# ─── Příkaz: ask ─────────────────────────────────────────────────────────────
+
+def cmd_ask(args: argparse.Namespace) -> None:
+    """Zavolá AI model přes Orchestrator a vypíše odpověď."""
+    from _meta.orchestrator import Orchestrator
+    from _meta.plugins.claude import ClaudeBackend
+    from _meta.plugins.ollama import OllamaBackend
+    from _meta.router import resolve_model
+
+    orch = Orchestrator()
+    orch.register(ClaudeBackend())
+    orch.register(OllamaBackend())
+
+    messages  = [{'role': 'user', 'content': args.prompt}]
+    dest      = resolve_model(args.operation, args.model)
+    label     = f"Zpracovávám... [{dest.removeprefix('ollama/')}]"
+
+    with Spinner(label):
+        resp = orch.request(
+            messages=messages,
+            operation=args.operation,
+            project=args.project,
+            model=args.model,
+            system=getattr(args, 'system', None),
+            max_tokens=getattr(args, 'max_tokens', 4096),
+        )
+
+    print(resp.text)
+    print(f"\n{D}[{resp.model}  in:{resp.tokens_in:,}  out:{resp.tokens_out:,}  ${resp.cost:.4f}]{R}")
+
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -728,33 +501,42 @@ def main() -> None:
 
     # ── agent log ─────────────────────────────────────────────────────────────
     p_log = sub.add_parser('log', help='Manuální záznam spotřeby tokenů')
-    p_log.add_argument('--project',   required=True, help='Název projektu')
-    p_log.add_argument('--operation', required=True, help='Typ operace (doc_update, code_review…)')
-    p_log.add_argument('--model',     required=True, help='Model: sonnet/opus/haiku nebo plný název')
-    p_log.add_argument('--in',        dest='tokens_in',  type=int, required=True, help='Vstupní tokeny')
-    p_log.add_argument('--out',       dest='tokens_out', type=int, required=True, help='Výstupní tokeny')
-    p_log.add_argument('--notes',     default='', help='Volitelná poznámka')
+    p_log.add_argument('--project',   required=True)
+    p_log.add_argument('--operation', required=True)
+    p_log.add_argument('--model',     required=True)
+    p_log.add_argument('--in',        dest='tokens_in',  type=int, required=True)
+    p_log.add_argument('--out',       dest='tokens_out', type=int, required=True)
+    p_log.add_argument('--notes',     default='')
 
     # ── agent billing ─────────────────────────────────────────────────────────
     p_bill = sub.add_parser('billing', help='Přehled spotřeby a nákladů')
-    p_bill.add_argument('--today',   action='store_true', help='Jen dnešní záznamy')
-    p_bill.add_argument('--week',    action='store_true', help='Posledních 7 dní')
-    p_bill.add_argument('--month',   action='store_true', help='Posledních 30 dní')
+    p_bill.add_argument('--today',   action='store_true')
+    p_bill.add_argument('--week',    action='store_true')
+    p_bill.add_argument('--month',   action='store_true')
     p_bill.add_argument('--project', help='Filtrovat projekt')
-    p_bill.add_argument('--model',   help='Filtrovat model (sonnet/opus/haiku)')
-    p_bill.add_argument('--top',     action='store_true', help='Top operace dle ceny')
+    p_bill.add_argument('--model',   help='Filtrovat model')
+    p_bill.add_argument('--top',     action='store_true')
 
     # ── agent cache ───────────────────────────────────────────────────────────
     p_cache = sub.add_parser('cache', help='Správa prompt cache')
-    p_cache.add_argument('--stats', action='store_true', help='Statistiky cache a TTL pravidla')
-    p_cache.add_argument('--list',  action='store_true', help='Seznam cached odpovědí')
-    p_cache.add_argument('--clear', action='store_true', help='Smazat expirovanou cache')
-    p_cache.add_argument('--all',   action='store_true', help='S --clear: smazat veškerou cache')
+    p_cache.add_argument('--stats', action='store_true')
+    p_cache.add_argument('--list',  action='store_true')
+    p_cache.add_argument('--clear', action='store_true')
+    p_cache.add_argument('--all',   action='store_true')
 
     # ── agent route ───────────────────────────────────────────────────────────
     p_route = sub.add_parser('route', help='Zobrazit nebo otestovat model routing')
-    p_route.add_argument('--show', action='store_true', help='Zobrazit routing tabulku (výchozí)')
-    p_route.add_argument('--test', metavar='OPERATION', help='Otestovat routing pro operaci')
+    p_route.add_argument('--show', action='store_true')
+    p_route.add_argument('--test', metavar='OPERATION')
+
+    # ── agent ask ─────────────────────────────────────────────────────────────
+    p_ask = sub.add_parser('ask', help='Zavolat AI model s promptem')
+    p_ask.add_argument('prompt',      help='Prompt text')
+    p_ask.add_argument('--operation', default='_default', help='Typ operace (code_review, doc_update…)')
+    p_ask.add_argument('--project',   default='cli',      help='Název projektu pro billing')
+    p_ask.add_argument('--model',     default='auto',     help='Model: auto/local/sonnet/opus/haiku')
+    p_ask.add_argument('--system',    default=None,       help='System prompt')
+    p_ask.add_argument('--max-tokens', dest='max_tokens', type=int, default=4096)
 
     # ── agent init ────────────────────────────────────────────────────────────
     sub.add_parser('init', help='Inicializovat ~/.ai-agent/ a databázi')
@@ -769,6 +551,8 @@ def main() -> None:
         cmd_cache(args)
     elif args.cmd == 'route':
         cmd_route(args)
+    elif args.cmd == 'ask':
+        cmd_ask(args)
     elif args.cmd == 'init':
         conn = init_db()
         conn.close()
