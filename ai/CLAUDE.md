@@ -3,7 +3,7 @@
 Sada nástrojů pro optimalizaci práce s AI v rámci workspace.
 Všechny nástroje jsou v `_meta/`, CLI dostupné globálně přes `~/bin/agent`.
 
-## Stav implementace (2026-02-21)
+## Stav implementace (2026-02-22)
 
 | Modul | Status | Soubor |
 |-------|--------|--------|
@@ -12,7 +12,8 @@ Všechny nástroje jsou v `_meta/`, CLI dostupné globálně přes `~/bin/agent`
 | Sémantický vyhledávač kódu | ✅ HOTOVO | `_meta/chroma_indexer.py` |
 | Model routing | ✅ HOTOVO | `_meta/token_tracker.py` |
 | Docs pipeline (JSON/Jinja2) | ✅ HOTOVO | `docs/build.py` |
-| **Persistence paměti** | ✅ HOTOVO | `memory/MEMORY.md` + `memory/session.md` + Golden Rule |
+| **Plugin orchestrator** | ✅ HOTOVO | `_meta/orchestrator.py`, `_meta/plugins/` |
+| **Persistence paměti** | ✅ HOTOVO | `memory/MEMORY.md` + Golden Rules |
 
 ## Architektura
 
@@ -58,6 +59,10 @@ agent cache --clear --all        # smazat vše
 # Model routing
 agent route --show               # zobrazit routing tabulku
 agent route --test doc_update    # otestovat routing pro operaci
+
+# AI request (Orchestrator)
+agent ask "prompt" --operation code_review --project X
+agent ask "ahoj" --model sonnet --project cli
 
 # Init
 agent init                       # inicializovat ~/.ai-agent/ a DB
@@ -112,6 +117,47 @@ text = call_api(
 | `_default` | cloud | claude-sonnet-4-6 |
 
 Změna lokálního modelu: upravit `LOCAL_MODEL` v `token_tracker.py`.
+
+## Golden Rules — Session persistence
+
+Viz detailní guide v `/home/geo/projects/CLAUDE.md`.
+
+### Signální fráze
+
+| Fráze | Kdy | Co agent udělá |
+|-------|-----|-----------------|
+| **`štafeta`** | Předání jinému modelu (před `/model`) | Aktualizuje oba MEMORY.md se shrnutím + specifikací. Bez git, bez sanitace. Napíše: *"Štafeta předána — přepni model."* |
+| **`konec zvonec`** | Konec práce, odhlášení | Sanitace + oba MEMORY.md + MODEL.md session log + git commit + push. Napíše: *"Vše synchronizováno — můžeš se odhlásit."* |
+
+### Pravidlo 1: Dual MEMORY.md (synchronizace)
+
+Auto-load cesty dle CWD:
+- Start z `/home/geo/projects/` → `~/.claude/projects/-home-geo-projects/memory/MEMORY.md`
+- Start z `/home/geo/` → `~/.claude/projects/-home-geo/memory/MEMORY.md`
+
+**Při štafetě/konec zvonec: aktualizovat OŘBA** aby se kontext neztratil mezi session/modely.
+
+### Pravidlo 2: Model routing (3 role)
+
+| Model | Role | Odpovědnost | Kdy |
+|-------|------|-------------|-----|
+| **Opus 4.6** | Architekt | Návrh, audit, složité problémy, specifikace | Architektonická rozhodnutí |
+| **Sonnet 4.6** | SW inženýr | Implementace dle specifikace, vývoj, refactoring | Veškerý kód |
+| **Haiku 4.5** | Dokumentarista | Generování docs z CLAUDE.md → JSON → HTML | `docs/data/{projekt}.json` |
+
+Workflow:
+1. **Opus** navrhne architekturu → zapíše spec do MEMORY.md
+2. **Sonnet** implementuje dle spec + aktualizuje `{projekt}/CLAUDE.md`
+3. **Haiku** čte CLAUDE.md → generuje `docs/data/{projekt}.json` → `build.py` renderuje HTML
+
+### Pravidlo 3: Output stručnost — POVINNÉ
+
+Maximální priorita: minimalizovat output tokeny (uživatel platí).
+
+**Mezi tool cally:** Žádný komentář pokud není architektonické rozhodnutí.
+**Na začátku:** Max 3 bullet points co se změní.
+**Na konci:** Max 3 bullet points co se změnilo.
+**Vynechat:** "teď udělám X", debug output, mechanický průběh.
 
 ## Sémantický vyhledávač (`_meta/chroma_indexer.py`)
 
@@ -172,10 +218,77 @@ python3 docs/build.py --output /cesta/soubor.html  # vlastní výstup
 
 ## Persistence paměti
 
-Viz Golden Rule v `/home/geo/projects/CLAUDE.md` a `memory/MEMORY.md`.
+Auto-loaded soubor: `memory/MEMORY.md` obsahuje aktuální úkol, next steps, specifikace pro handoff.
+
+Viz Golden Rules výše + detailní guide v `/home/geo/projects/CLAUDE.md`.
+
+### Orchestrator (`_meta/orchestrator.py`)
+
+Plugin-based AI middleware s centrálním cache a billing. Nahrazuje monolitický `token_tracker.py`.
+
+#### Architektura
+
+```
+Orchestrator
+  ├── register(Backend)  — registrace backendu (Claude, Ollama)
+  └── request()          — entry point
+      ├── 1. Semantic cache lookup (nomic-embed-text embeddingy)
+      ├── 2. Hash cache lookup (SHA-256)
+      ├── 3. Router: select_backend() — dle operation
+      ├── 4. Execute: backend.execute()
+      ├── 5. Log billing (DB)
+      ├── 6. Cache store
+      └── 7. Return Response
+```
+
+#### CLI
+
+```bash
+agent ask "prompt" --operation code_review --project X [--model auto]
+```
+
+Zobrazuje spinner `⠋ Zpracovávám... [model]` během volání.
+
+#### Moduly
+
+| Modul | Role |
+|-------|------|
+| `plugins/base.py` | Backend ABC + Response dataclass |
+| `plugins/claude.py` | Anthropic API (is_available checks ANTHROPIC_API_KEY) |
+| `plugins/ollama.py` | Ollama HTTP (is_available checks localhost:11434) |
+| `billing.py` | DB, ceny, hash cache funcs |
+| `router.py` | ROUTING_RULES, select_backend(), CACHE_TTL |
+| `semantic_cache.py` | nomic-embed-text embeddingy, cosine similarity lookup |
+| `orchestrator.py` | Orchestrator class — core |
+
+#### Python API
+
+```python
+from _meta.orchestrator import Orchestrator
+from _meta.plugins.claude import ClaudeBackend
+from _meta.plugins.ollama import OllamaBackend
+
+orch = Orchestrator()
+orch.register(ClaudeBackend())
+orch.register(OllamaBackend())
+
+resp = orch.request(
+    messages   = [{'role': 'user', 'content': '...'}],
+    operation  = 'code_review',
+    project    = 'backup-dashboard',
+    model      = 'auto',  # → routing tabulka
+    system     = '...',   # volitelné
+    max_tokens = 4096,
+)
+print(resp.text)
+print(f"Cost: ${resp.cost:.4f}")
+```
+
+---
+
+## TODO
 
 - [ ] Git post-commit hook: automatické `agent index --diff` po každém commitu
-- [ ] Komplexní dokumentace v tomto adresáři (popis konceptů, architektura, příklady)
-- [ ] Dokončit docs pipeline pro projekty: `dashboard/`, `web-edit/`, `docs/`
 - [ ] Reálné testování `call_api` s Anthropic API klíčem
 - [ ] `agent billing --export csv` pro analýzy nákladů
+- [ ] Quota-aware routing (rate limit headers, error 429 fallback)
