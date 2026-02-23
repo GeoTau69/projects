@@ -48,3 +48,5 @@ Git commit
 - [x] Docs pipeline (JSON→HTML, Jinja2, schema)
 - [x] Persistence systém (MEMORY.md, Golden Rule, sanitize.py)
 - [x] Všechny projekty dokumentovány (ai, backup-dashboard, dashboard, web-edit, git, docs)
+- [x] fedoraOS dokumentace (8 kapitol + web :8081)
+- [x] IC ATF setup Režim A (Proxmox VM, API token, proxmoxer konektivita)

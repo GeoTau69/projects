@@ -63,7 +63,7 @@ Workflow:
 **Pravidlo vlastnictví CLAUDE.md:**
 - `{projekt}/CLAUDE.md` = **výhradně Sonnet** — píše, aktualizuje, refaktoruje
 - Haiku smí číst CLAUDE.md pro JSON generování, ale **NESMÍ ho modifikovat**
-- Výjimka: MEMORY.md soubory při `štafeta`/`konec zvonec` — všechny modely
+- Výjimka: MEMORY.md při `štafeta`/`konec zvonec` — všechny modely
 
 Cenový princip: Opus ($75/M out) jen na architektonické rozhodování. Sonnet ($15/M out) na implementaci + CLAUDE.md. Haiku ($4/M out) na JSON/HTML pipeline.
 
@@ -76,10 +76,7 @@ Cenový princip: Opus ($75/M out) jen na architektonické rozhodování. Sonnet 
 | `docs/INFO.md` | Manuálně | Portál průvodce — viz **ℹ️ Info** (http://localhost:8080) |
 | `memory/MEMORY.md` | **Auto** | Volatile session state — aktuální úkol, next steps |
 
-**Auto-memory cesty** (závisí na CWD při startu Claude):
-- Start z `/home/geo/projects/` → `~/.claude/projects/-home-geo-projects/memory/MEMORY.md`
-- Start z `/home/geo/` → `~/.claude/projects/-home-geo/memory/MEMORY.md`
-- **Oba soubory synchronizovat** při `konec zvonec`
+**Auto-memory:** `~/.claude/projects/-home-geo/memory/MEMORY.md` (symlink z `-home-geo-projects/`)
 
 ## Zlaté pravidlo — Session persistence
 
@@ -92,14 +89,15 @@ Cenový princip: Opus ($75/M out) jen na architektonické rozhodování. Sonnet 
 
 | Fráze | Kdy | Co model udělá |
 |-------|-----|-----------------|
-| **`štafeta`** | Předání jinému modelu (před `/model`) | Aktualizuje oba MEMORY.md se shrnutím + specifikací pro dalšího. Bez git, bez sanitace. Napíše: *"Štafeta předána — přepni model."* |
-| **`konec zvonec`** | Konec práce, odhlášení | Sanitace + oba MEMORY.md + MODEL.md session log + git commit + push. Napíše: *"Vše synchronizováno — můžeš se odhlásit."* |
+| **`ulož si práci`** | Kdykoliv během session | Aktualizuje MEMORY.md s aktuálním stavem. Bez git, bez sanitace. Napíše: *"Uloženo."* |
+| **`štafeta`** | Předání jinému modelu (před `/model`) | Aktualizuje MEMORY.md se shrnutím + specifikací pro dalšího. Bez git, bez sanitace. Napíše: *"Štafeta předána — přepni model."* |
+| **`konec zvonec`** | Konec práce, odhlášení | Sanitace + MEMORY.md + MODEL.md session log + git commit + push. Napíše: *"Vše synchronizováno — můžeš se odhlásit."* |
 
 ### `štafeta` — postup
 
 <!-- Lehký handoff: žádný git, žádná sanitace. Cíl = předat kontext dalšímu modelu. -->
 
-1. Aktualizuje **oba** MEMORY.md (cesty viz tabulka v Kontextové soubory)
+1. Aktualizuje MEMORY.md (cesty viz tabulka v Kontextové soubory)
    - Co jsem udělal (3-5 bodů)
    - Co má příští model udělat (konkrétní specifikace)
    - Rozpracované soubory (cesty)
@@ -110,7 +108,7 @@ Cenový princip: Opus ($75/M out) jen na architektonické rozhodování. Sonnet 
 <!-- Plný checkpoint: sanitace + git. Cíl = bezpečné odhlášení bez ztráty kontextu. -->
 
 1. Spustí sanitaci pokud MODEL.md > 100 řádků: `python3 tools/sanitize.py --target all --keep 5`
-2. Aktualizuje **oba** MEMORY.md
+2. Aktualizuje MEMORY.md
 3. Přidá 1 řádek do `MODEL.md` SESSION LOG (tabulkový formát)
 4. Commitne + pushne: `git push gitea main && git push github main`
 5. Napíše: *"Vše synchronizováno — můžeš se odhlásit."*

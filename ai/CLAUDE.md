@@ -133,49 +133,7 @@ Změna lokálního modelu: upravit `LOCAL_MODEL` v `token_tracker.py`.
 
 ## Golden Rules — Session persistence
 
-Viz detailní guide v `/home/geo/projects/CLAUDE.md`.
-
-### Signální fráze
-
-| Fráze | Kdy | Co agent udělá |
-|-------|-----|-----------------|
-| **`štafeta`** | Předání jinému modelu (před `/model`) | Aktualizuje oba MEMORY.md se shrnutím + specifikací. Bez git, bez sanitace. Napíše: *"Štafeta předána — přepni model."* |
-| **`konec zvonec`** | Konec práce, odhlášení | Sanitace + oba MEMORY.md + MODEL.md session log + git commit + push. Napíše: *"Vše synchronizováno — můžeš se odhlásit."* |
-
-### Pravidlo 1: Dual MEMORY.md (synchronizace)
-
-Auto-load cesty dle CWD:
-- Start z `/home/geo/projects/` → `~/.claude/projects/-home-geo-projects/memory/MEMORY.md`
-- Start z `/home/geo/` → `~/.claude/projects/-home-geo/memory/MEMORY.md`
-
-**Při štafetě/konec zvonec: aktualizovat OŘBA** aby se kontext neztratil mezi session/modely.
-
-### Pravidlo 2: Model routing (3 role)
-
-| Model | Role | Odpovědnost | Kdy |
-|-------|------|-------------|-----|
-| **Opus 4.6** | Architekt | Návrh, audit, složité problémy, specifikace | Architektonická rozhodnutí |
-| **Sonnet 4.6** | SW inženýr | Implementace + **vlastník všech `{projekt}/CLAUDE.md`** | Veškerý kód + aktualizace kontextu |
-| **Haiku 4.5** | Dokumentarista | **Pouze** `docs/data/{projekt}.json` → HTML pipeline | Čte CLAUDE.md, negeneruje ho |
-
-Workflow:
-1. **Opus** navrhne architekturu → zapíše spec do MEMORY.md
-2. **Sonnet** implementuje dle spec + **aktualizuje `{projekt}/CLAUDE.md`**
-3. **Haiku** čte CLAUDE.md → generuje `docs/data/{projekt}.json` → `build.py` renderuje HTML
-
-**Pravidlo vlastnictví CLAUDE.md:**
-- `{projekt}/CLAUDE.md` = **výhradně Sonnet** — píše, aktualizuje, refaktoruje
-- Haiku smí CLAUDE.md **číst**, ale **NESMÍ ho modifikovat**
-- Výjimka: `memory/MEMORY.md` při `štafeta`/`konec zvonec` — všechny modely
-
-### Pravidlo 3: Output stručnost — POVINNÉ
-
-Maximální priorita: minimalizovat output tokeny (uživatel platí).
-
-**Mezi tool cally:** Žádný komentář pokud není architektonické rozhodnutí.
-**Na začátku:** Max 3 bullet points co se změní.
-**Na konci:** Max 3 bullet points co se změnilo.
-**Vynechat:** "teď udělám X", debug output, mechanický průběh.
+Detailní pravidla (signální fráze, model routing, stručnost výstupu) viz `/home/geo/projects/CLAUDE.md`.
 
 ## Sémantický vyhledávač (`_meta/chroma_indexer.py`)
 
