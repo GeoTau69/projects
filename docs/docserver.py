@@ -163,6 +163,18 @@ body {
   letter-spacing: 1px;
 }
 #refresh-btn:hover { color: #e6edf3; border-color: #58a6ff; }
+.header-link {
+  font-family: inherit;
+  font-size: 0.75rem;
+  background: #21262d;
+  color: #8b949e;
+  border: 1px solid #30363d;
+  padding: 3px 10px;
+  border-radius: 3px;
+  letter-spacing: 1px;
+  text-decoration: none;
+}
+.header-link:hover { color: #e6edf3; border-color: #58a6ff; }
 #refresh-btn.active { color: #3fb950; border-color: #3fb950; }
 #auto-status { font-size: 0.7rem; color: #484f58; }
 
@@ -315,6 +327,7 @@ body {
 
 <div id="header">
   <h1>◈ PROJECTS DOCS</h1>
+  <a class="header-link" href="http://localhost:8081/">FEDORA OS :8081</a>
   <span id="auto-status"></span>
   <button id="refresh-btn" onclick="toggleAutoRefresh()">AUTO-REFRESH: OFF</button>
 </div>
