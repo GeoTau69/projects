@@ -65,7 +65,7 @@ Opus: DIRECTIVE (co + jak + proč) → MEMORY.md
       → Opus: REVIEW (povinný!) → ✅ OK nebo 🔄 REWORK
 ```
 
-**"Bez vedení není velení"** — Opus je velitel, ne poradce. Worker bez direktivy bloudí, velitel bez review je slepý.
+**"Bez spojení není velení"** — Opus je velitel, ne poradce. Worker bez direktivy bloudí, velitel bez review je slepý.
 
 **Opus review protokol** (povinný po každém worker handbacku):
 1. **Přečti** MEMORY.md — co worker zapsal jako DONE
