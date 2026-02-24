@@ -12,6 +12,8 @@ Centrální dokumentační portál pro workspace `~/projects/`.
 | ☑️ Todo | Živý backlog (`todo.md`) — aktualizuj přímo v souboru |
 | 📋 Overview | Workspace mapa (`CLAUDE.md`) — projekty, infrastruktura, konvence |
 
+**Help dialog** — klikni na **?** v hlavičce → zobrazí obsah této stránky (INFO.md) přímo v dialogu.
+
 **Projekty** — každý projekt má:
 - Barevnou ikonu stavu: 🟢 active · 🟡 wip · ⚪ planned · 📦 archived
 - Port badge pokud projekt běží jako service
@@ -196,10 +198,16 @@ docs/
   build.py            — JSON → HTML renderer (Jinja2)
   INFO.md             — tato stránka
   AI_WORKFLOW.md      — průvodce generováním dokumentace pro Haiku
+  static/
+    css/              — theme.css, layout.css, md-content.css, build.css
+    js/               — md-viewer.js, fedoraos-viewer.js, sidebar-scroll.js
+  templates/
+    shell-docserver.html  — HTML šablona pro :8080
+    shell-fedoraos.html   — HTML šablona pro :8081
+    maintenance.html      — maintenance panel
+    project.html.j2       — Jinja2 šablona pro build.py
   schema/
     doc_schema.json   — JSON Schema pro validaci
-  templates/
-    project.html.j2   — Jinja2 šablona
   data/
     {projekt}.json    — AI generuje pouze tyto soubory
   output/             — generované HTML (není verzováno)

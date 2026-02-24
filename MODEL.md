@@ -10,6 +10,7 @@
 
 | Datum | Model | Co | Status |
 |-------|-------|----|--------|
+| 2026-02-24 | Opus | Docs infra fáze 7: CLAUDE.md+INFO.md aktualizace (static/, templates/, endpointy), :8081 ověřen, theme identický | ✅ |
 | 2026-02-24 | Opus | fedoraOS docs pipeline (7 kroků), MANIFEST 7 principů, principy 2+4+5 do CLAUDE.md, ic-atf symlink+project.yaml, smazán backup-scripts-analysis, make docs (8 projektů) | ✅ |
 | 2026-02-23 | Opus | IC-AFT→IC ATF rename, metadata refaktoring (symlink MEMORY, de-dup Golden Rules, ~/CLAUDE.md root loader, "ulož si práci"), CLAUDE.md pro ic-atf + fedoraOS | ✅ |
 | 2026-02-23 | Opus+Sonnet | IC ATF setup Režim A kompletní, fedoraOS docs (8 kapitol + web :8081), docserver cross-link | ✅ |

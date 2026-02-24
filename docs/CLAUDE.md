@@ -12,8 +12,8 @@ Centrální dokumentační web pro `~/projects/`. Single-page app zobrazující 
 
 ## Tech stack
 
-- **Backend**: Python stdlib `http.server` (žádné závislosti, jako `dashboard.py`)
-- **Frontend**: Inline HTML/CSS/JS (dark theme, monospace), marked.js CDN pro MD rendering
+- **Backend**: Python stdlib `http.server` (žádné závislosti)
+- **Frontend**: HTML šablony (`templates/`) + sdílený CSS/JS (`static/`), marked.js CDN pro MD rendering
 - **Discovery**: Stejná logika jako `info-sync.py` — prochází `project.yaml` soubory
 
 ## Soubory
@@ -24,11 +24,25 @@ build.py              — JSON → HTML renderer (Jinja2, bez AI), CLI tool
 project.yaml          — metadata projektu
 CLAUDE.md             — tato dokumentace
 
-schema/
-  doc_schema.json     — JSON Schema pro validaci AI-generovaných dat
+static/
+  css/
+    theme.css         — barvy, fonty, proměnné (sdílený s fedoraOS :8081)
+    layout.css        — sidebar + hlavní panel layout
+    md-content.css    — styly pro renderovaný markdown
+    build.css         — styly pro build.py generované HTML
+  js/
+    md-viewer.js      — SPA logika docserveru (sidebar, markdown loading)
+    fedoraos-viewer.js — SPA logika fedoraOS serveru
+    sidebar-scroll.js — auto-scroll sidebar na aktivní položku
 
 templates/
-  project.html.j2     — Jinja2 šablona pro projektovou dokumentaci
+  shell-docserver.html  — HTML šablona pro docserver (:8080)
+  shell-fedoraos.html   — HTML šablona pro fedoraOS (:8081)
+  maintenance.html      — maintenance panel (sanitace)
+  project.html.j2       — Jinja2 šablona pro build.py generované HTML
+
+schema/
+  doc_schema.json     — JSON Schema pro validaci AI-generovaných dat
 
 data/
   {projekt}.json      — AI generuje POUZE tyto soubory
@@ -42,9 +56,16 @@ output/               — generované HTML soubory (build.py output, není verzo
 
 ```
 GET /                    → HTML shell (SPA)
+GET /static/{cesta}      → sdílené CSS/JS soubory (per-project override podporován)
 GET /api/projects        → JSON: seznam projektů s live statusem portů
 GET /api/md?dir=master   → raw markdown: ~/projects/CLAUDE.md
+GET /api/md?dir=info     → raw markdown: docs/INFO.md
+GET /api/md?dir=todo     → raw markdown: ~/projects/todo.md
 GET /api/md?dir=X        → raw markdown: ~/projects/X/CLAUDE.md
+GET /docs/{projekt}      → HTML dokumentace z output/{projekt}.html
+GET /maintenance         → maintenance panel (sanitace MODEL.md, todo.md)
+POST /api/sanitize       → spustí sanitaci (JSON body: target, keep, days)
+GET /api/sanitize?...    → dry-run sanitace (query params)
 ```
 
 ## Příkazy
@@ -66,7 +87,9 @@ journalctl --user -u docs -f
 - `check_port()` — live status portu pro sidebar ikony
 - `api_projects()` → JSON s projekty + live statusem
 - `api_md(dir)` → raw MD text (ochrana path traversal: jen přímé podadresáře ROOT)
-- `DocsHandler` — routing: `/`, `/api/projects`, `/api/md`
+- `serve_static(path)` → statické soubory s per-project override (projekt/static/ → docs/static/)
+- `api_sanitize()` → spouští `tools/sanitize.py` jako subprocess
+- `DocsHandler` — routing: `/`, `/static/*`, `/api/projects`, `/api/md`, `/docs/*`, `/maintenance`, `/api/sanitize`
 
 ## Bezpečnost
 
@@ -94,11 +117,18 @@ python3 build.py --output /cesta/soubor.html  # vlastní výstup (pro migraci)
 
 **Závislosti:** `jinja2` (povinná), `jsonschema` (volitelná, pro `--check`)
 
+## Sdílený theme s fedoraOS (:8081)
+
+Oba servery (docserver :8080 a fedoraOS serve.py :8081) sdílejí:
+- **CSS/JS** z `docs/static/` — identický vizuální styl
+- **HTML šablony** z `docs/templates/` — shell-docserver.html a shell-fedoraos.html
+- **Per-project override** — server hledá static nejdřív v `{projekt}/static/`, pak fallback na `docs/static/`
+
 ## Konvence
 
 - `docserver.py` — single-file, žádné závislosti mimo stdlib
 - `build.py` — Jinja2 + volitelně jsonschema
-- HTML/CSS/JS inline v `docserver.py` jako raw string
+- HTML šablony v `templates/`, CSS/JS v `static/` — **žádný inline HTML/CSS/JS** v Python souborech
 - marked.js načten z CDN — fallback na plain text pokud offline
 - Kód česky, UTF-8
 
