@@ -106,7 +106,7 @@ def api_md(dir_param: str) -> tuple[bytes, int]:
     else:
         # Ochrana path traversal — pouze přímé podadresáře ROOT
         candidate = ROOT / dir_param
-        if not candidate.resolve().parent == ROOT.resolve():
+        if "/" in dir_param or dir_param.startswith("."):
             return b"403 Forbidden", 403
         md_path = candidate / "CLAUDE.md"
 

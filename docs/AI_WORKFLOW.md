@@ -226,3 +226,38 @@ Pokud si nejsi jistý, začni tímto a postupně rozšiřuj:
 ```
 
 Validuj, builduj, pak teprve rozšiřuj o další sekce a moduly.
+
+---
+
+## MD-only projekty (bez zdrojového kódu)
+
+Některé projekty (např. `fedoraOS`) nemají zdrojový kód — obsahují pouze MD kapitoly servírované vlastním web serverem.
+
+### Odlišnosti oproti běžným projektům
+
+1. **Žádné `modules`** — není co dokumentovat, JSON obsahuje pouze `sections`
+2. **Kapitoly = shrnutí + odkaz** — každá MD kapitola se shrne do 1-2 vět v `sections`, s odkazem na :8081 (nebo příslušný port) pro plný obsah
+3. **Symlink do `~/projects/`** — projekt žije mimo projects, propojí se přes `ln -s ~/fedoraOS ~/projects/fedoraOS`
+4. **Bugfix docserver.py** — `api_md()` musí používat path traversal check kompatibilní se symlinky (ne `.resolve().parent`)
+
+### Vzorová struktura JSON pro MD-only projekt
+
+```json
+{
+  "project": "fedoraOS",
+  "display_name": "fedoraOS",
+  "updated": "2026-02-24",
+  "description": "Referenční dokumentace pro OS, HW a virtualizaci.",
+  "status": "active",
+  "port": 8081,
+  "sections": [
+    {
+      "id": "kapitoly",
+      "title": "Kapitoly",
+      "blocks": [
+        {"type": "text", "text": "Shrnutí kapitoly — 1-2 věty. Plný obsah na <a href='http://localhost:8081/01-hardware'>:8081</a>."}
+      ]
+    }
+  ]
+}
+```

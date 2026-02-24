@@ -1,0 +1,57 @@
+{
+  "project": "fedoraOS",
+  "display_name": "fedoraOS",
+  "version": "1.0.0",
+  "updated": "2026-02-24",
+  "description": "Referenční dokumentace pro nastavení OS, hardware, virtualizaci a AI workflow na MoreFine S500+ (Ryzen 9 5900HX, 64 GB RAM, Fedora 43 + Proxmox dual-boot).",
+  "status": "active",
+  "port": 8081,
+  "tech": ["markdown", "python"],
+  "access": {
+    "local": "http://localhost:8081",
+    "lan": "http://192.168.0.101:8081",
+    "tailscale": "http://fedora:8081"
+  },
+  "back_link": {"href": "/", "label": "\ud83c\udfe0 Zp\u011bt na Dashboard"},
+  "sections": [
+    {
+      "id": "prehled",
+      "title": "P\u0159ehled",
+      "icon": "\ud83d\udcda",
+      "blocks": [
+        {"type": "text", "text": "Dokumentace syst\u00e9mu ve 8 kapitol\u00e1ch pokr\u00fdvaj\u00edc\u00edch hardware, dual-boot, virtualizaci, s\u00ed\u0165, spr\u00e1vu opr\u00e1vn\u011bn\u00ed, tmux a AI workflow. Pln\u00fd obsah na <a href='http://localhost:8081'>:8081</a>."},
+        {"type": "table", "headers": ["Kapitola", "Obsah"], "rows": [
+          ["<a href='http://localhost:8081/01-hardware'>01-hardware</a>", "HW specifikace MoreFine S500+, NVMe disky, partition tabulky"],
+          ["<a href='http://localhost:8081/02-dual-boot'>02-dual-boot</a>", "EFI boot entries, p\u0159ep\u00edn\u00e1n\u00ed Fedora \u2194 Proxmox, dead man's switch"],
+          ["<a href='http://localhost:8081/03-proxmox-dev'>03-proxmox-dev</a>", "Nested vs bare-metal Proxmox, CEC architektura (3 VM)"],
+          ["<a href='http://localhost:8081/04-networking'>04-networking</a>", "Bridge br0, Tailscale VPN, s\u00ed\u0165ov\u00e1 topologie"],
+          ["<a href='http://localhost:8081/05-sudo-modes'>05-sudo-modes</a>", "Local vs remote sudo, AI workflow limitace"],
+          ["<a href='http://localhost:8081/06-tmux'>06-tmux</a>", "Tmux konfigurace, kl\u00e1vesov\u00e9 zkratky, workflow"],
+          ["<a href='http://localhost:8081/07-claude-code-ai'>07-claude-code-ai</a>", "Claude Code profily, \u0161tafeta pattern, tokeny"],
+          ["<a href='http://localhost:8081/glossary'>glossary</a>", "Slovn\u00ed\u010dek pojm\u016f: \u0161tafeta, CEC, dead man's switch"]
+        ]}
+      ]
+    },
+    {
+      "id": "hw-souhrn",
+      "title": "Hardware",
+      "icon": "\ud83d\udda5\ufe0f",
+      "blocks": [
+        {"type": "text", "text": "MoreFine S500+ s AMD Ryzen 9 5900HX (8C/16T), 64 GB DDR4, dva NVMe disky \u2014 477 GB pro Fedoru, 3.6 TB pro Proxmox."},
+        {"type": "table", "headers": ["Disk", "Velikost", "Pou\u017eit\u00ed"], "rows": [
+          ["nvme1n1", "477 GB", "Fedora OS (prim\u00e1rn\u00ed boot)"],
+          ["nvme0n1", "3.6 TB", "Proxmox bare-metal (sekund\u00e1rn\u00ed boot)"]
+        ]}
+      ]
+    },
+    {
+      "id": "sit",
+      "title": "S\u00ed\u0165",
+      "icon": "\ud83c\udf10",
+      "blocks": [
+        {"type": "text", "text": "S\u00ed\u0165ov\u00e1 topologie: eno1 \u2192 br0 (192.168.0.101) pro LAN + nested VM, Tailscale (100.117.55.88) pro vzd\u00e1len\u00fd p\u0159\u00edstup."},
+        {"type": "code", "lang": "bash", "text": "eno1 -> br0 (192.168.0.101) -> vnet0 -> proxmox-dev (192.168.0.200)\ntailscale0: 100.117.55.88 (fedora)"}
+      ]
+    }
+  ]
+}
