@@ -98,7 +98,7 @@ def validate_doc(doc: dict) -> list[str]:
 def build_env() -> "Environment":
     """Vytvoří Jinja2 Environment s filtry."""
     env = Environment(
-        loader=FileSystemLoader(str(TEMPLATES_DIR)),
+        loader=FileSystemLoader([str(TEMPLATES_DIR), str(DOCS_DIR)]),
         autoescape=False,       # JSON je důvěryhodný zdroj; inline HTML v textech je záměrné
         trim_blocks=True,
         lstrip_blocks=True,

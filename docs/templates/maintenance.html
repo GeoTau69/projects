@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<title>Maintain — Projects Docs</title>
+<link rel="stylesheet" href="/static/css/theme.css">
+<style>
+body { padding: 2rem; display: block; }
+h1 { color: var(--blue); font-size: 0.95rem; letter-spacing: 3px; margin-bottom: 0.25rem; }
+.sub { color: var(--text3); font-size: 0.75rem; margin-bottom: 2rem; }
+.back { color: var(--blue); text-decoration: none; font-size: 0.8rem; }
+.back:hover { text-decoration: underline; }
+h2 { color: var(--text2); font-size: 0.7rem; letter-spacing: 3px; text-transform: uppercase;
+     border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; margin: 1.5rem 0 0.75rem; }
+.row { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
+label { color: var(--text2); font-size: 0.8rem; width: 120px; flex-shrink: 0; }
+select, input[type=number] {
+  background: var(--bg2); border: 1px solid var(--border); color: var(--text);
+  font-family: inherit; font-size: 0.82rem; padding: 4px 8px; border-radius: 3px; }
+input[type=number] { width: 80px; }
+.hint { color: var(--text3); font-size: 0.72rem; }
+.btn-row { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
+button {
+  font-family: inherit; font-size: 0.8rem; padding: 6px 18px;
+  border-radius: 3px; border: 1px solid var(--border); cursor: pointer;
+  letter-spacing: 1px; }
+#btn-preview { background: var(--bg3); color: var(--text2); }
+#btn-preview:hover { color: var(--text); border-color: var(--blue); }
+#btn-run { background: #0d4429; color: var(--green); border-color: #238636; }
+#btn-run:hover { background: #196c2e; }
+#btn-run:disabled { opacity: 0.4; cursor: default; }
+#output {
+  margin-top: 1.5rem; background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 4px; padding: 1rem; font-size: 0.82rem; line-height: 1.6;
+  min-height: 100px; white-space: pre-wrap; display: none; }
+.ok   { color: var(--green); }
+.warn { color: var(--yellow); }
+.err  { color: var(--red); }
+.dim  { color: var(--text3); }
+</style>
+</head>
+<body>
+<a class="back" href="/">← Zpět na portál</a>
+<h1 style="margin-top:1rem;">🧹 MAINTAIN</h1>
+<div class="sub">Sanitace MODEL.md (SESSION LOG) a todo.md (HOTOVO položky)</div>
+
+<h2>Parametry</h2>
+<div class="row">
+  <label>Cíl</label>
+  <select id="target">
+    <option value="all">all — oboje</option>
+    <option value="model">model — jen MODEL.md</option>
+    <option value="todo">todo — jen todo.md</option>
+  </select>
+</div>
+<div class="row">
+  <label>Zachovat sessions</label>
+  <input type="number" id="keep" value="5" min="1" max="50">
+  <span class="hint">posledních N záznamů v SESSION LOG</span>
+</div>
+<div class="row">
+  <label>Nebo dní</label>
+  <input type="number" id="days" placeholder="—" min="1" max="365">
+  <span class="hint">záznamy mladší než N dní (přebije keep pokud vyplněno)</span>
+</div>
+
+<div class="btn-row">
+  <button id="btn-preview" onclick="run(true)">👁 Preview (dry-run)</button>
+  <button id="btn-run" onclick="run(false)" disabled>⚡ Spustit</button>
+</div>
+
+<div id="output"></div>
+
+<script>
+let lastPreviewOk = false;
+
+async function run(dryRun) {
+  const target = document.getElementById('target').value;
+  const keep   = parseInt(document.getElementById('keep').value) || null;
+  const daysEl = document.getElementById('days').value;
+  const days   = daysEl ? parseInt(daysEl) : null;
+
+  const out = document.getElementById('output');
+  out.style.display = 'block';
+  out.innerHTML = '<span class="dim">Čekám...</span>';
+
+  const params = new URLSearchParams({ target });
+  if (keep && !days) params.set('keep', keep);
+  if (days)          params.set('days', days);
+  if (dryRun)        params.set('dry_run', '1');
+
+  try {
+    let resp;
+    if (dryRun) {
+      resp = await fetch('/api/sanitize?' + params);
+    } else {
+      resp = await fetch('/api/sanitize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target, keep: keep || null, days: days || null })
+      });
+    }
+    const data = await resp.json();
+    renderResult(data, dryRun);
+  } catch (e) {
+    out.innerHTML = `<span class="err">Chyba: ${e.message}</span>`;
+  }
+}
+
+function renderResult(results, dryRun) {
+  const out = document.getElementById('output');
+  const runBtn = document.getElementById('btn-run');
+
+  if (results.error) {
+    out.innerHTML = `<span class="err">Chyba: ${results.error}</span>`;
+    return;
+  }
+
+  let html = dryRun ? '<span class="warn">── DRY-RUN (nic nebylo změněno) ──</span>\n\n' : '';
+  let totalArchived = 0;
+
+  for (const r of results) {
+    html += `<span class="ok">${r.target.toUpperCase()}</span>\n`;
+    html += `  Zachováno:   <b>${r.kept}</b>\n`;
+    html += `  Archivováno: <b>${r.archived}</b>`;
+    if (r.archive_file) html += ` → <span class="dim">${r.archive_file}</span>`;
+    html += '\n';
+    if (r.details && r.details.length) {
+      for (const d of r.details) html += `  <span class="dim">  · ${d}</span>\n`;
+    }
+    html += '\n';
+    totalArchived += r.archived;
+  }
+
+  if (!dryRun) {
+    html += totalArchived > 0
+      ? `<span class="ok">✓ Hotovo. Změny nezapomeň commitnout: git add -p && git commit</span>`
+      : `<span class="dim">Nic k archivaci.</span>`;
+    lastPreviewOk = false;
+    runBtn.disabled = true;
+  } else {
+    lastPreviewOk = totalArchived > 0;
+    runBtn.disabled = !lastPreviewOk;
+    if (!lastPreviewOk) html += '<span class="dim">Nic k archivaci.</span>';
+  }
+
+  out.innerHTML = html;
+}
+</script>
+</body>
+</html>

@@ -17,9 +17,11 @@ Fedora server: LAN `192.168.0.101` · Tailscale `fedora` / `100.117.55.88`
 | Služba | Lokální | LAN | Tailscale |
 |--------|---------|-----|-----------|
 | Gitea | :3000 | 192.168.0.101:3000 | fedora:3000 |
+| docs | :8080 | 192.168.0.101:8080 | fedora:8080 |
+| fedoraOS | :8081 | 192.168.0.101:8081 | fedora:8081 |
 | backup-dashboard | :8090 | 192.168.0.101:8090 | fedora:8090 |
 | dashboard | :8099 | 192.168.0.101:8099 | fedora:8099 |
-| docs | :8080 | 192.168.0.101:8080 | fedora:8080 |
+| agent-ui | :8100 | 192.168.0.101:8100 | fedora:8100 |
 | web-edit | :8765 | 192.168.0.101:8765 | fedora:8765 · [funnel](https://fedora.tail41712d.ts.net/) |
 
 ## Konvence
@@ -60,14 +62,57 @@ Fedora server: LAN `192.168.0.101` · Tailscale `fedora` / `100.117.55.88`
 Opus: DIRECTIVE (co + jak + proč) → MEMORY.md
   → Worker (Sonnet/Haiku): implementuje PŘESNĚ dle spec
     → Worker: hlásí DONE + co udělal → MEMORY.md
-      → Opus: review → OK nebo REWORK
+      → Opus: REVIEW (povinný!) → ✅ OK nebo 🔄 REWORK
 ```
+
+**"Bez vedení není velení"** — Opus je velitel, ne poradce. Worker bez direktivy bloudí, velitel bez review je slepý.
+
+**Opus review protokol** (povinný po každém worker handbacku):
+1. **Přečti** MEMORY.md — co worker zapsal jako DONE
+2. **Zkontroluj** klíčové soubory (diff nebo read změněných souborů)
+3. **Ověř live** (curl, test) pokud je to UI/služba
+4. **Reportuj** uživateli: ✅ OK nebo 🔄 REWORK + co opravit
 
 **Pravidla pro workery (Sonnet, Haiku):**
 1. **Nereinterpretuj** Opus specifikaci — implementuj přesně jak je zadáno
 2. **Neměň design** — pokud nesouhlasíš, zapiš `ESCALATION: důvod` do MEMORY.md a ČEKEJ
 3. **Hlásit dokončení** — po implementaci zapiš do MEMORY.md co jsi udělal
 4. **Neinformuj jiný worker po svém** — Haiku dostává instrukce od Opuse, ne od Sonnetu
+
+### Worker Self-Check Protocol (povinný před hlášením DONE)
+
+Před tím, než worker řekne "hotovo", musí provést auto-review a napsat **DELTA MANIFEST** do MEMORY.md. Formát:
+
+```
+## DELTA MANIFEST — {projekt}/{task} (Worker, YYYY-MM-DD HH:MM)
+
+**Opus Spec:** [co bylo zadáno — 1 řádek shrnutí]
+
+✅ SPLNĚNO — co je 100% hotovo:
+- [checklist item 1]
+- [checklist item 2]
+
+⚠️ ČÁSTEČNĚ / NEJISTOTA — co není úplné nebo nejsem si jistý:
+- [uncertainty item 1 + důvod]
+- [uncertainty item 2 + důvod]
+
+🔴 ESCALATION pro Opus REVIEW — co KONKRÉTNĚ má Opus zkontrolovat:
+1. [konkrétní test/kontrola 1]
+2. [konkrétní test/kontrola 2]
+
+🔗 REFERENČNÍ INFO:
+- Klíčové soubory: [cesty]
+- Build output: [stdout shrnutí]
+- Live status: [curl result / test status]
+
+→ WAITING FOR OPUS AUTO-REVIEW
+```
+
+**Klíčová pravidla pro DELTA MANIFEST:**
+- **Konkrétnost** — "HTML se generoval bez chyby" NENÍ konkrétní. "HTML schema check PASS, ale DOM struktura sekcí neověřena" — JE konkrétní.
+- **Self-test first** — worker musí SAM otestovat co je možné (curl, build.py, schema validator). Teprve pak eskaluje.
+- **Escalation není selhání** — je to NORMÁLNÍ. Worker říká: "toto jsem otestoval ✓, toto potřebuji abyste zkontrolovali ✓"
+- **Bez eskalace = červená vlajka** — pokud worker napíše "DONE" bez ⚠️ a 🔴 sekcí, Opus reviewuje s vyšší skepsí.
 
 ### Vlastnictví obsahu
 
@@ -146,15 +191,15 @@ make list                # Rychlý výpis projektů
 > `make docs` aktualizuje tabulku níže z `project.yaml` souborů (statické sekce výše jsou zachovány).
 
 <!-- PROJEKTY:START -->
-<!-- generováno: 2026-02-24 04:04 -->
+<!-- generováno: 2026-02-24 09:31 -->
 
 | Projekt | Status | Tech | Port | Popis | Detail |
 |---------|--------|------|------|-------|--------|
-| 🟢 `agent-ui/` | active | ? | 8100 | Webové rozhraní pro orchestrátor (Flask + HTMX). Das... | `agent-ui/CLAUDE.md` |
-| 🟢 `ai/` | active | ? | None | Sada nástrojů pro optimalizaci práce s AI v rámci wo... | `ai/CLAUDE.md` |
+| 🟢 `agent-ui/` | active | python | 8100 | Webové rozhraní pro orchestrátor (Flask + HTMX). Das... | `agent-ui/CLAUDE.md` |
+| 🟢 `ai/` | active | python/toolkit | None | Sada nástrojů pro optimalizaci práce s AI v rámci wo... | `ai/CLAUDE.md` |
 | 🟢 `backup-dashboard/` | active | python | 8090 | Webové rozhraní pro správu 3-vrstvového backup systé... | `backup-dashboard/CLAUDE.md` |
 | 🟢 `dashboard/` | active | python | 8099 | Živý přehled stavu všech projektů, služeb a systémov... | `dashboard/CLAUDE.md` |
-| 🟢 `fedoraOS/` | active | markdown/docs/docs | 8081 | Referenční dokumentace pro nastavení OS, hardware, v... | `fedoraOS/CLAUDE.md` |
+| 🟢 `fedoraOS/` | active | markdown/docs | 8081 | Referenční dokumentace pro nastavení OS, hardware, v... | `fedoraOS/CLAUDE.md` |
 | 🟢 `git/` | active | markdown/docs | – | Centrální dokumentace git setupu, workflow a integra... | `git/CLAUDE.md` |
 | 🟢 `ic-atf/` | active | python/testing-framework | – | Automatizovaný testovací framework pro Instance Cont... | `ic-atf/CLAUDE.md` |
 | 🟢 `web-edit/` | active | python | 8765 | Online Markdown editor pro IC dokumentaci s real-tim... | `web-edit/CLAUDE.md` |

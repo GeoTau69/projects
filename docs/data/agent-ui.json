@@ -508,7 +508,6 @@
             "Vyber <strong>Backend</strong> (auto / Claude Code / API / Ollama)",
             "Klikni <strong>Odeslat</strong> → prompt se uloží do DB, AI zpracuje, odpověď se uloží"
         ]
-      ]
         },
         {
           "type": "heading",

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<title>FedoraOS Docs</title>
+<link rel="stylesheet" href="/static/css/theme.css">
+<link rel="stylesheet" href="/static/css/layout.css">
+<link rel="stylesheet" href="/static/css/md-content.css">
+</head>
+<body>
+
+<div id="header">
+  <h1>FEDORA OS</h1>
+  <a class="header-link" id="docs-link">PROJECTS DOCS :8080</a>
+</div>
+
+<div id="layout">
+  <nav id="sidebar">
+    <div id="sidebar-header">Kapitoly</div>
+    <div id="nav-list"></div>
+  </nav>
+
+  <main id="main">
+    <div id="loading">Vyberte kapitolu ze seznamu vlevo.</div>
+    <div id="md-content"></div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"
+  onerror="window._markedMissing=true;console.warn('marked.js nedostupný')">
+</script>
+<script src="/static/js/fedoraos-viewer.js"></script>
+<script>
+document.getElementById('docs-link').href = `//${location.hostname}:8080/`;
+</script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<title>Projects Docs</title>
+<link rel="stylesheet" href="/static/css/theme.css">
+<link rel="stylesheet" href="/static/css/layout.css">
+<link rel="stylesheet" href="/static/css/md-content.css">
+</head>
+<body>
+
+<div id="header">
+  <h1>◈ PROJECTS DOCS</h1>
+  <a class="header-link" id="fedoraos-link">FEDORA OS :8081</a>
+  <button class="header-btn" onclick="window.open('/maintenance','_blank')" title="Sanitace">🧹</button>
+  <a class="header-btn header-btn-help" href="#" onclick="document.getElementById('help-dialog').showModal();return false;" title="O portálu">ⓘ</a>
+  <span id="auto-status"></span>
+  <button id="refresh-btn" onclick="toggleAutoRefresh()">AUTO-REFRESH: OFF</button>
+</div>
+
+<div id="layout">
+  <nav id="sidebar">
+    <div id="sidebar-header">Navigator</div>
+    <div id="nav-list">
+      <div class="nav-item" style="color:var(--text3);font-size:0.75rem;">Načítám...</div>
+    </div>
+  </nav>
+
+  <main id="main">
+    <div id="loading">Vyberte projekt ze seznamu vlevo.</div>
+    <div id="error-msg"></div>
+    <div id="md-content"></div>
+  </main>
+</div>
+
+<dialog id="help-dialog" style="background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:2rem;max-width:600px;font-family:'Courier New',monospace;">
+  <div id="help-content" style="font-size:0.85rem;line-height:1.7;">Načítám...</div>
+  <form method="dialog" style="margin-top:1rem;text-align:right;">
+    <button style="background:var(--bg3);color:var(--text2);border:1px solid var(--border);padding:4px 14px;border-radius:3px;cursor:pointer;font-family:inherit;">Zavřít</button>
+  </form>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"
+  onerror="window._markedMissing=true;console.warn('marked.js nedostupný — jsi offline?')">
+</script>
+<script src="/static/js/md-viewer.js"></script>
+<script>
+document.getElementById('fedoraos-link').href = `//${location.hostname}:8081/`;
+</script>
+<script>
+// Help dialog — načte INFO.md
+document.getElementById('help-dialog').addEventListener('click', function(e) {
+    if (e.target === this) this.close();
+});
+document.querySelector('a[title="O portálu"]').addEventListener('click', async () => {
+    const el = document.getElementById('help-content');
+    try {
+        const r = await fetch('/api/md?dir=info');
+        const md = await r.text();
+        el.innerHTML = (typeof marked !== 'undefined') ? marked.parse(md) : `<pre>${md}</pre>`;
+    } catch(e) { el.textContent = 'Chyba načítání.'; }
+});
+</script>
+</body>
+</html>

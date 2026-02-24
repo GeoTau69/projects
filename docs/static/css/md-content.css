@@ -1,0 +1,65 @@
+/* md-content.css — Markdown rendering styles
+   Sdílený pro :8080 docserver + :8081 fedoraOS (client-side marked.js) */
+
+#md-content h1 { color: var(--blue); font-size: 1.4rem; margin: 1rem 0 0.75rem; border-bottom: 1px solid var(--border); padding-bottom: 0.4rem; }
+#md-content h2 { color: var(--blue2); font-size: 1.1rem; margin: 1.25rem 0 0.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
+#md-content h3 { color: var(--blue3); font-size: 0.95rem; margin: 1rem 0 0.4rem; }
+#md-content p { color: var(--text-dim); line-height: 1.6; margin: 0.5rem 0; }
+#md-content ul, #md-content ol { margin: 0.5rem 0 0.5rem 1.5rem; color: var(--text-dim); line-height: 1.7; }
+#md-content li { margin: 0.1rem 0; }
+#md-content code {
+    background: #1c2128;
+    color: var(--code-fg);
+    padding: 0.1em 0.4em;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.88em;
+}
+#md-content pre {
+    background: #1c2128;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1rem;
+    overflow-x: auto;
+    margin: 0.75rem 0;
+}
+#md-content pre code {
+    background: none;
+    color: var(--text);
+    padding: 0;
+    font-size: 0.85rem;
+}
+#md-content blockquote {
+    border-left: 3px solid var(--border);
+    margin: 0.5rem 0;
+    padding: 0.4rem 1rem;
+    color: var(--text2);
+}
+#md-content strong { color: var(--text); }
+#md-content em { color: var(--blue3); }
+#md-content table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0.75rem 0;
+    font-size: 0.85rem;
+}
+#md-content th {
+    background: #1c2128;
+    border: 1px solid var(--border);
+    padding: 0.4rem 0.75rem;
+    color: var(--text2);
+    text-align: left;
+    font-weight: normal;
+    letter-spacing: 1px;
+}
+#md-content td {
+    border: 1px solid var(--bg3);
+    padding: 0.35rem 0.75rem;
+    color: var(--text-dim);
+}
+#md-content tr:hover td { background: #1c2128; }
+#md-content a { color: var(--blue); text-decoration: none; }
+#md-content a:hover { text-decoration: underline; }
+#md-content hr { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
+/* Skrytí HTML komentářů (SYNC bloky jsou jen pro CLAUDE.md v editoru) */
+#md-content .sync-comment { display: none; }

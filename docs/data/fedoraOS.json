@@ -1,7 +1,7 @@
 {
   "project": "fedoraOS",
   "display_name": "fedoraOS",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "updated": "2026-02-24",
   "description": "Referenční dokumentace pro nastavení OS, hardware, virtualizaci a AI workflow na MoreFine S500+ (Ryzen 9 5900HX, 64 GB RAM, Fedora 43 + Proxmox dual-boot).",
   "status": "active",
@@ -12,45 +12,270 @@
     "lan": "http://192.168.0.101:8081",
     "tailscale": "http://fedora:8081"
   },
-  "back_link": {"href": "/", "label": "\ud83c\udfe0 Zp\u011bt na Dashboard"},
+  "back_link": {"href": "/", "label": "🏠 Zpět na Dashboard"},
   "sections": [
     {
       "id": "prehled",
-      "title": "P\u0159ehled",
-      "icon": "\ud83d\udcda",
+      "title": "Přehled",
+      "icon": "📚",
       "blocks": [
-        {"type": "text", "text": "Dokumentace syst\u00e9mu ve 8 kapitol\u00e1ch pokr\u00fdvaj\u00edc\u00edch hardware, dual-boot, virtualizaci, s\u00ed\u0165, spr\u00e1vu opr\u00e1vn\u011bn\u00ed, tmux a AI workflow. Pln\u00fd obsah na <a href='http://localhost:8081'>:8081</a>."},
+        {"type": "text", "text": "Dokumentace systému pokrývá hardware, dual-boot, virtualizaci, síť, správu oprávnění, tmux a AI workflow. Plný obsah na <a href='http://localhost:8081'>:8081</a>."},
         {"type": "table", "headers": ["Kapitola", "Obsah"], "rows": [
-          ["<a href='http://localhost:8081/01-hardware'>01-hardware</a>", "HW specifikace MoreFine S500+, NVMe disky, partition tabulky"],
-          ["<a href='http://localhost:8081/02-dual-boot'>02-dual-boot</a>", "EFI boot entries, p\u0159ep\u00edn\u00e1n\u00ed Fedora \u2194 Proxmox, dead man's switch"],
-          ["<a href='http://localhost:8081/03-proxmox-dev'>03-proxmox-dev</a>", "Nested vs bare-metal Proxmox, CEC architektura (3 VM)"],
-          ["<a href='http://localhost:8081/04-networking'>04-networking</a>", "Bridge br0, Tailscale VPN, s\u00ed\u0165ov\u00e1 topologie"],
-          ["<a href='http://localhost:8081/05-sudo-modes'>05-sudo-modes</a>", "Local vs remote sudo, AI workflow limitace"],
-          ["<a href='http://localhost:8081/06-tmux'>06-tmux</a>", "Tmux konfigurace, kl\u00e1vesov\u00e9 zkratky, workflow"],
-          ["<a href='http://localhost:8081/07-claude-code-ai'>07-claude-code-ai</a>", "Claude Code profily, \u0161tafeta pattern, tokeny"],
-          ["<a href='http://localhost:8081/glossary'>glossary</a>", "Slovn\u00ed\u010dek pojm\u016f: \u0161tafeta, CEC, dead man's switch"]
+          ["01-hardware", "HW specifikace MoreFine S500+, NVMe disky, partition tabulky"],
+          ["02-dual-boot", "EFI boot entries, přepínání Fedora ↔ Proxmox, dead man's switch"],
+          ["03-proxmox-dev", "Nested vs bare-metal Proxmox, CEC architektura (3 VM)"],
+          ["04-networking", "Bridge br0, Tailscale VPN, síťová topologie"],
+          ["05-sudo-modes", "Local vs remote sudo, AI workflow limitace"],
+          ["06-tmux", "Tmux konfigurace, klávesové zkratky, workflow"],
+          ["07-claude-code-ai", "Claude Code profily, štafeta pattern, tokeny"],
+          ["glossary", "Slovníček pojmů: štafeta, CEC, dead man's switch"]
         ]}
+      ]
+    },
+    {
+      "id": "rychla-reference",
+      "title": "Rychlá reference",
+      "icon": "⚡",
+      "blocks": [
+        {"type": "table", "headers": ["Akce", "Příkaz"], "rows": [
+          ["Boot do Proxmoxu", "sudo reboot-to-proxmox"],
+          ["Spustit Proxmox VM", "sudo virsh start proxmox-dev"],
+          ["Zastavit Proxmox VM", "sudo virsh shutdown proxmox-dev"],
+          ["Nouzové vypnutí VM", "sudo virsh destroy proxmox-dev"],
+          ["Konzole Proxmox VM", "sudo virsh console proxmox-dev"],
+          ["Stav VM", "sudo virsh list --all"],
+          ["Proxmox web UI", "https://192.168.0.200:8006"],
+          ["Stav bridge", "ip addr show br0"],
+          ["Tailscale status", "tailscale status"],
+          ["Tmux nová session", "tmux new -s &lt;name&gt;"],
+          ["Tmux připojit", "tmux attach -t &lt;name&gt;"],
+          ["Tmux reload config", "Prefix + r  (nebo tmux source-file ~/.tmux.conf)"],
+          ["Claude Code verze", "claude --version"],
+          ["Přepnout Claude profil", "ln -sfn ~/.claude-profiles/&lt;profil&gt; ~/.claude"],
+          ["Sudo pre-auth (pro AI)", "sudo -v"],
+          ["Sudo kontrola oprávnění", "sudo -l"],
+          ["Restart docs server", "systemctl --user restart docs fedoraos-docs"]
+        ]},
+        {"type": "text", "text": "Prefix = <code>Ctrl+A</code>. Kompletní příkazy viz jednotlivé kapitoly níže."}
       ]
     },
     {
       "id": "hw-souhrn",
       "title": "Hardware",
-      "icon": "\ud83d\udda5\ufe0f",
+      "icon": "🖥️",
       "blocks": [
-        {"type": "text", "text": "MoreFine S500+ s AMD Ryzen 9 5900HX (8C/16T), 64 GB DDR4, dva NVMe disky \u2014 477 GB pro Fedoru, 3.6 TB pro Proxmox."},
-        {"type": "table", "headers": ["Disk", "Velikost", "Pou\u017eit\u00ed"], "rows": [
-          ["nvme1n1", "477 GB", "Fedora OS (prim\u00e1rn\u00ed boot)"],
-          ["nvme0n1", "3.6 TB", "Proxmox bare-metal (sekund\u00e1rn\u00ed boot)"]
+        {"type": "text", "text": "MoreFine S500+ s AMD Ryzen 9 5900HX (8C/16T), 64 GB DDR4, dva NVMe disky — 477 GB pro Fedoru, 3.6 TB pro Proxmox."},
+        {"type": "table", "headers": ["Disk", "Velikost", "Použití"], "rows": [
+          ["nvme1n1", "477 GB", "Fedora OS (primární boot)"],
+          ["nvme0n1", "3.6 TB", "Proxmox bare-metal (sekundární boot)"]
         ]}
       ]
     },
     {
       "id": "sit",
-      "title": "S\u00ed\u0165",
-      "icon": "\ud83c\udf10",
+      "title": "Síť",
+      "icon": "🌐",
       "blocks": [
-        {"type": "text", "text": "S\u00ed\u0165ov\u00e1 topologie: eno1 \u2192 br0 (192.168.0.101) pro LAN + nested VM, Tailscale (100.117.55.88) pro vzd\u00e1len\u00fd p\u0159\u00edstup."},
+        {"type": "text", "text": "Síťová topologie: eno1 → br0 (192.168.0.101) pro LAN + nested VM, Tailscale (100.117.55.88) pro vzdálený přístup."},
         {"type": "code", "lang": "bash", "text": "eno1 -> br0 (192.168.0.101) -> vnet0 -> proxmox-dev (192.168.0.200)\ntailscale0: 100.117.55.88 (fedora)"}
+      ]
+    },
+    {
+      "id": "dual-boot",
+      "title": "Dual-boot",
+      "icon": "🔄",
+      "blocks": [
+        {"type": "text", "text": "Stroj obsahuje dva fyzicky oddělené disky, každý s vlastním bootloaderem. UEFI firmware rozhoduje, který disk bootuje. Výchozí boot je vždy Fedora — Proxmox se aktivuje explicitně."},
+        {"type": "heading", "text": "EFI Boot entries"},
+        {"type": "table", "headers": ["Entry ID", "Název", "Disk", "Stav / Role"], "rows": [
+          ["Boot0009", "Fedora", "nvme1n1p1", "Primární — BootCurrent, první v BootOrder"],
+          ["Boot0006", "proxmox", "nvme0n1p2", "Sekundární — explicitní přepnutí"],
+          ["Boot000A", "Fedora", "nvme1n1p1", "Záložní SHIM entry (fallback Fedora)"],
+          ["Boot000B", "UEFI OS", "nvme0n1p2", "Fallback Proxmox (neoznačený UEFI OS)"]
+        ]},
+        {"type": "code", "lang": "bash", "text": "# Zobrazit boot entries\nefibootmgr -v\n\n# Přepnout na Proxmox (jednorázově)\nsudo efibootmgr --bootnext 0006\n\n# Reboot\nsudo systemctl reboot\n\n# Ověřit aktuální boot\nefibootmgr | grep BootCurrent"},
+        {"type": "card", "variant": "warning", "title": "Dead man's switch", "text": "Bezpečnostní mechanismus: po restartu Proxmoxu se stroj automaticky vrátí do Fedory (bez možnosti zaseknutí v dead loopě). Používá se <code>--bootnext</code> místo <code>--bootorder</code>."}
+      ]
+    },
+    {
+      "id": "proxmox",
+      "title": "Proxmox",
+      "icon": "🖥️",
+      "blocks": [
+        {"type": "text", "text": "Proxmox lze na tomto stroji provozovat dvěma způsoby. Oba sdílejí stejnou IP adresu (192.168.0.200) a API rozhraní."},
+        {"type": "table", "headers": ["Vlastnost", "Režim A — Nested", "Režim B — Bare-metal"], "rows": [
+          ["Boot OS", "Fedora (nvme1n1)", "Proxmox přímo (nvme0n1)"],
+          ["Proxmox běží jako", "KVM VM pod Fedorou", "Nativně na hardwaru"],
+          ["IP adresa", "192.168.0.200", "192.168.0.200"],
+          ["GUI", "https://192.168.0.200:8006", "https://192.168.0.200:8006"],
+          ["Výkon", "~80-90% (overhead nested KVM)", "100% (přímý přístup k HW)"],
+          ["Účel", "Vývoj, experimentování", "Produkce, plný výkon"],
+          ["Přepínání", "VM start/stop (rychlé)", "Reboot stroje (viz dual-boot)"]
+        ]},
+        {"type": "heading", "text": "Režim A — virsh příkazy"},
+        {"type": "code", "lang": "bash", "text": "# Zobrazit stav VM\nsudo virsh list --all\n\n# Spustit VM\nsudo virsh start proxmox-dev\n\n# Zastavit VM\nsudo virsh shutdown proxmox-dev\n\n# Nouzové vypnutí\nsudo virsh destroy proxmox-dev\n\n# Připojit se na konzoli\nsudo virsh console proxmox-dev\n\n# Stav sítě VM\nsudo virsh domiflist proxmox-dev"},
+        {"type": "heading", "text": "Parametry proxmox-dev VM"},
+        {"type": "table", "headers": ["Parametr", "Hodnota"], "rows": [
+          ["vCPU", "12"],
+          ["RAM", "48 GB"],
+          ["Disk", "200 GB (qcow2 nebo raw)"],
+          ["Boot", "UEFI (OVMF)"],
+          ["NIC typ", "virtio"],
+          ["MAC adresa", "52:54:00:b4:56:42"],
+          ["IP", "192.168.0.200/24"],
+          ["Hostitel", "Fedora, qemu:///system"]
+        ]},
+        {"type": "heading", "text": "CEC architektura"},
+        {"type": "text", "text": "CEC (Customer Environment Cluster) = 3 VM uvnitř Proxmoxu: APP VM (ServiceNow app server), MID VM (MID Server), DB VM (databáze). Představuje jednu zákaznickou instanci."}
+      ]
+    },
+    {
+      "id": "sudo",
+      "title": "Sudo",
+      "icon": "🔐",
+      "blocks": [
+        {"type": "text", "text": "Sudo konfigurace rozlišuje mezi lokálním přístupem (plné sudo) a vzdáleným (NOPASSWD whitelist)."},
+        {"type": "heading", "text": "Remote přístup"},
+        {"type": "table", "headers": ["Metoda", "Protokol", "IP", "Port", "Stav"], "rows": [
+          ["SSH", "SSH", "100.117.55.88", "22", "Aktivní"],
+          ["NoMachine", "NX", "100.117.55.88", "4000", "Instalován"],
+          ["xRDP", "RDP", "100.117.55.88", "3389", "Aktivní"],
+          ["Tailscale", "WireGuard", "100.117.55.88", "—", "Overlay"]
+        ]},
+        {"type": "heading", "text": "NOPASSWD konfigurace"},
+        {"type": "code", "lang": "bash", "text": "# /etc/sudoers.d/geo-nopasswd\ngeo ALL=(ALL) NOPASSWD: /usr/bin/virsh list *\ngeo ALL=(ALL) NOPASSWD: /usr/bin/virsh dominfo *\ngeo ALL=(ALL) NOPASSWD: /usr/bin/virsh domiflist *\ngeo ALL=(ALL) NOPASSWD: /usr/bin/virsh start *\ngeo ALL=(ALL) NOPASSWD: /usr/bin/virsh shutdown *\ngeo ALL=(ALL) NOPASSWD: /usr/bin/virsh destroy *\ngeo ALL=(ALL) NOPASSWD: /usr/sbin/bridge *\ngeo ALL=(ALL) NOPASSWD: /usr/sbin/ip link *\ngeo ALL=(ALL) NOPASSWD: /usr/sbin/efibootmgr *\ngeo ALL=(ALL) NOPASSWD: /usr/local/bin/reboot-to-proxmox"},
+        {"type": "heading", "text": "Claude Code a sudo"},
+        {"type": "card", "variant": "info", "title": "Pre-auth pro AI", "text": "Před spuštěním Claude Code session spusť <code>sudo -v</code> pro pre-autentizaci. Bez toho Claude Code nemůže zadat heslo interaktivně."}
+      ]
+    },
+    {
+      "id": "tmux",
+      "title": "Tmux",
+      "icon": "⌨️",
+      "blocks": [
+        {"type": "text", "text": "Prefix = Ctrl+A, mouse ON, escape-time 0 (kritické pro Claude Code — bez zpoždění Escape)."},
+        {"type": "heading", "text": "Sessions"},
+        {"type": "table", "headers": ["Zkratka / Příkaz", "Akce"], "rows": [
+          ["tmux new -s &lt;name&gt;", "Nová session se jménem"],
+          ["tmux ls", "Výpis sessions"],
+          ["tmux attach -t &lt;name&gt;", "Připojit se k session"],
+          ["Prefix + d", "Detach (session zůstane běžet)"],
+          ["Prefix + $", "Přejmenovat session"],
+          ["Prefix + s", "Interaktivní přepínání sessions"],
+          ["Prefix + (", "Předchozí session"],
+          ["Prefix + )", "Další session"]
+        ]},
+        {"type": "heading", "text": "Windows"},
+        {"type": "table", "headers": ["Zkratka", "Akce"], "rows": [
+          ["Prefix + c", "Nové okno"],
+          ["Prefix + &lt;číslo&gt;", "Přepnout na okno"],
+          ["Prefix + p / n", "Předchozí / další okno"],
+          ["Prefix + ,", "Přejmenovat okno"],
+          ["Prefix + w", "Interaktivní přepínání oken"],
+          ["Prefix + &", "Zavřít okno"]
+        ]},
+        {"type": "heading", "text": "Panes"},
+        {"type": "table", "headers": ["Zkratka", "Akce"], "rows": [
+          ["Prefix + |", "Split horizontálně (vpravo)"],
+          ["Prefix + -", "Split vertikálně (dolů)"],
+          ["Prefix + šipky", "Přepínání mezi panely"],
+          ["Prefix + q", "Zobrazit čísla panelů"],
+          ["Prefix + z", "Zoom pane"],
+          ["Prefix + x", "Zavřít pane"],
+          ["Prefix + {", "Přesunout pane doleva"],
+          ["Prefix + }", "Přesunout pane doprava"]
+        ]},
+        {"type": "heading", "text": "Session konvence"},
+        {"type": "table", "headers": ["Session", "Účel"], "rows": [
+          ["ic-aft", "ic-aft framework vývoj"],
+          ["proxmox", "Proxmox správa, virsh"],
+          ["claude", "Claude Code interaktivní session"],
+          ["monitor", "Monitoring, logy, watch příkazy"],
+          ["default", "Obecný terminál"]
+        ]}
+      ]
+    },
+    {
+      "id": "claude-code",
+      "title": "Claude Code",
+      "icon": "🤖",
+      "blocks": [
+        {"type": "heading", "text": "Instalace a verze"},
+        {"type": "table", "headers": ["Parametr", "Hodnota"], "rows": [
+          ["Verze", "2.1.50"],
+          ["Instalace", "npm (global)"],
+          ["Binárka", "~/.npm-global/bin/claude"],
+          ["PATH", "~/.npm-global/bin"]
+        ]},
+        {"type": "code", "lang": "bash", "text": "# Ověřit verzi\nclaude --version\n\n# Aktualizovat\nnpm update -g @anthropic-ai/claude-code\n\n# Kde je binárka\nwhich claude"},
+        {"type": "heading", "text": "Modely"},
+        {"type": "table", "headers": ["Model", "ID", "Role", "Cena"], "rows": [
+          ["Opus 4.6", "claude-opus-4-6", "Architektura, design", "Nejvyšší"],
+          ["Sonnet 4.6", "claude-sonnet-4-6", "Implementace kódu", "Střední"],
+          ["Haiku 4.5", "claude-haiku-4-5", "Dokumentace, opakování", "Nejnižší"]
+        ]},
+        {"type": "heading", "text": "Profily"},
+        {"type": "table", "headers": ["Profil", "Typ", "Účel"], "rows": [
+          ["pro-commonsense", "PRO ($20/m)", "Primární, vysoká kvóta"],
+          ["api", "API (pay-as-you-go)", "Fallback, bez kvóty"],
+          ["free-george", "Free", "Záložní"],
+          ["free-jirka", "Free", "Záložní"]
+        ]},
+        {"type": "code", "lang": "bash", "text": "# Přepnout na API profil\nln -sfn ~/.claude-profiles/api ~/.claude\n\n# Přepnout na PRO profil\nln -sfn ~/.claude-profiles/pro-commonsense ~/.claude\n\n# Zobrazit aktivní profil\nls -la ~/.claude"},
+        {"type": "heading", "text": "Štafeta pattern"},
+        {"type": "text", "text": "Vzor pro práci mezi modely: <strong>Opus</strong> (plán) → <strong>Sonnet</strong> (implementace) → <strong>Haiku</strong> (dokumentace). Každý dělá svou sílu."},
+        {"type": "heading", "text": "Best practices"},
+        {"type": "list", "ordered": true, "entries": [
+          "Vždy mít tmux session",
+          "MEMORY.md aktualizovat na konci každé session",
+          "Konkrétní instrukce > vágní požadavky",
+          "Jeden úkol najednou",
+          "Kontrolovat výstup",
+          "Štafeta pro velké projekty",
+          "Sudo pre-autorizace (<code>sudo -v</code>) před AI session",
+          "Pojmenované sessions (<code>tmux new -s ic-aft</code>)"
+        ]}
+      ]
+    },
+    {
+      "id": "slovnicek",
+      "title": "Slovníček",
+      "icon": "📖",
+      "blocks": [
+        {"type": "heading", "text": "AI workflow"},
+        {"type": "table", "headers": ["Pojem", "Smysl"], "rows": [
+          ["Štafeta", "Opus (plán) → Sonnet (kód) → Haiku (dokumentace)"],
+          ["Konec zvonec", "Signál pro ukončení session, uložení do MEMORY.md"],
+          ["Handoff", "Předání stavu mezi sessions (MEMORY.md, CLAUDE.md)"],
+          ["MEMORY.md", "Persistentní paměť projektu (~/.claude/projects/&lt;hash&gt;/MEMORY.md)"],
+          ["CLAUDE.md", "Projektové instrukce — konvence kódu, architektura, pravidla"]
+        ]},
+        {"type": "heading", "text": "Virtualizace"},
+        {"type": "table", "headers": ["Pojem", "Vysvětlení"], "rows": [
+          ["CEC", "Customer Environment Cluster — 3 VM (APP, MID, DB) = 1 zákaznická instance"],
+          ["Režim A", "Nested Proxmox — KVM VM v Fedoře (~80-90% výkonu)"],
+          ["Režim B", "Bare-metal Proxmox — boot z nvme0n1 (100% výkon)"],
+          ["Nested virt", "VM uvnitř VM (3 úrovně: Host → Fedora VM → Proxmox VM → CEC VMs)"],
+          ["Dead man's switch", "Automatický návrat do Fedory při selhání Proxmoxu (bezpečnost)"],
+          ["Bridge br0", "Linux L2 switch (eno1 + vnet0 + ostatní)"],
+          ["TAP interface", "Virtuální NIC pro VM (vnetX)"],
+          ["LVM", "Logical Volume Manager — abstrakce nad fyzickými disky"],
+          ["zram", "Kompresní swap v RAM (Proxmox)"]
+        ]},
+        {"type": "heading", "text": "Zkratky"},
+        {"type": "table", "headers": ["Zkratka", "Smysl"], "rows": [
+          ["AFT", "Acceptance Framework Tests"],
+          ["CEC", "Customer Environment Cluster"],
+          ["ESP", "EFI System Partition"],
+          ["IC", "Instance Controller"],
+          ["KVM", "Kernel-based Virtual Machine"],
+          ["LVM", "Logical Volume Manager"],
+          ["NVMe", "Non-Volatile Memory Express"],
+          ["QEMU", "Quick Emulator"],
+          ["TAP", "Network TAP (virtuální NIC)"],
+          ["UEFI", "Unified Extensible Firmware Interface"],
+          ["VPN", "Virtual Private Network"]
+        ]}
       ]
     }
   ]

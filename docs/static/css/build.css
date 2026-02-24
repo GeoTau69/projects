@@ -1,0 +1,106 @@
+/* build.css — Styly pro build pipeline (project.html.j2)
+   Používá se pro JSON→HTML renderované stránky (standalone) */
+
+/* ── Karty ── */
+.card-doc {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    margin: 14px 0;
+}
+.card-doc.warning { border-color: var(--yellow); background: #1c1500; }
+.card-doc.danger  { border-color: var(--red);    background: #1c0a0a; }
+.card-doc.info    { border-color: var(--blue);   background: #0a1929; }
+.card-doc.success { border-color: var(--green);  background: #0a1c0a; }
+.card-doc .card-title {
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+.card-doc p  { margin-bottom: 6px; }
+.card-doc ul { margin: 6px 0 6px 20px; }
+.card-doc pre {
+    margin: 10px 0 0;
+    background: var(--bg);
+    border-color: var(--border);
+}
+
+/* ── Badges ── */
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+}
+.badge-green  { background: #0d2818; color: var(--green); }
+.badge-yellow { background: #2a1e00; color: var(--yellow); }
+.badge-red    { background: #2d0a0a; color: var(--red); }
+.badge-blue   { background: #0c2d6b; color: var(--blue); }
+.badge-purple { background: #271052; color: var(--purple); }
+
+/* ── Live Status Widget ── */
+.live-status {
+    background: linear-gradient(135deg, #0d1117 0%, #1a1e2e 100%);
+    border: 2px solid var(--green);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 24px 0;
+}
+.live-status h3 { color: var(--green); margin: 0 0 16px; display: flex; align-items: center; gap: 8px; }
+.live-status > p { color: var(--text2); margin-bottom: 16px; }
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+}
+.status-item { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+.status-item-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
+.status-item-value { font-size: 18px; font-weight: 600; margin-top: 4px; }
+.status-item-value.ok    { color: var(--green); }
+.status-item-value.warn  { color: var(--yellow); }
+.status-item-value.error { color: var(--red); }
+.pulse {
+    width: 8px; height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+    animation: pulse-anim 2s ease-in-out infinite;
+}
+@keyframes pulse-anim { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* ── Meta řádek ── */
+.meta-row {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin: 6px 0 24px;
+    font-size: 13px;
+    color: var(--text2);
+}
+
+/* ── Moduly tabulka ── */
+
+/* ── Print ── */
+@media print {
+    .top-bar, .sidebar { display: none !important; }
+    .content { max-width: 100% !important; padding: 20px !important; }
+    .layout  { display: block !important; }
+    body     { background: white !important; color: black !important; }
+    h1, h2, h3 { color: #003080 !important; }
+    h2 { border-bottom: 1px solid #ccc !important; }
+    pre, code { background: #f5f5f5 !important; border: 1px solid #ccc !important; color: black !important; }
+    th  { background: #e8e8e8 !important; color: black !important; }
+    td  { color: black !important; }
+    .card-doc { background: #f9f9f9 !important; border: 1px solid #999 !important; color: black !important; }
+    .card-doc.warning { background: #fff9e6 !important; border-color: #cc9900 !important; }
+    .card-doc.danger  { background: #fff0f0 !important; border-color: #cc0000 !important; }
+    .card-doc.info    { background: #f0f4ff !important; border-color: #0033cc !important; }
+    .card-doc.success { background: #f0fff4 !important; border-color: #006600 !important; }
+    .badge-green  { background: #d4edda !important; color: #155724 !important; }
+    .badge-yellow { background: #fff3cd !important; color: #856404 !important; }
+    .badge-red    { background: #f8d7da !important; color: #721c24 !important; }
+    .badge-blue   { background: #d1ecf1 !important; color: #0c5460 !important; }
+}
