@@ -10,6 +10,7 @@
 
 | Datum | Model | Co | Status |
 |-------|-------|----|--------|
+| 2026-02-24 | Opus | fedoraOS review: 10/10 sekcí OK, sidebar+tabulky+karty ✅, smazán NoMachine z fedoraOS.json, rebuild+restart | ✅ |
 | 2026-02-24 | Haiku+Opus | fedoraOS: Přístupové režimy → MANIFEST.md (6 režimů vč. LAN SSH/RDP), smazán NoMachine (4 soubory), 05-sudo-modes.md vyčištěn | ✅ |
 | 2026-02-24 | Haiku+Opus | fedoraOS.json review (10 sekcí OK), Worker Self-Check Protocol + DELTA MANIFEST do CLAUDE.md, princip 8 → ✅ live pilot | ✅ |
 | 2026-02-24 | Opus | Docs infra fáze 7: CLAUDE.md+INFO.md aktualizace (static/, templates/, endpointy), :8081 ověřen, theme identický | ✅ |

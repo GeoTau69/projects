@@ -138,7 +138,6 @@
         {"type": "heading", "text": "Remote přístup"},
         {"type": "table", "headers": ["Metoda", "Protokol", "IP", "Port", "Stav"], "rows": [
           ["SSH", "SSH", "100.117.55.88", "22", "Aktivní"],
-          ["NoMachine", "NX", "100.117.55.88", "4000", "Instalován"],
           ["xRDP", "RDP", "100.117.55.88", "3389", "Aktivní"],
           ["Tailscale", "WireGuard", "100.117.55.88", "—", "Overlay"]
         ]},
