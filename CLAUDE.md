@@ -50,22 +50,36 @@ Fedora server: LAN `192.168.0.101` · Tailscale `fedora` / `100.117.55.88`
 
 | Model | Role | Odpovědnost | Kdy použít |
 |-------|------|-------------|------------|
-| **Opus 4.6** | Architekt | Návrh architektury, audit, složité problémy, specifikace | Nové systémy, architektonická rozhodnutí, review |
-| **Sonnet 4.6** | SW inženýr | Implementace dle specifikace, vývoj, refactoring, kód + **vlastník všech `CLAUDE.md`** | Psaní kódu, úpravy souborů, aktualizace kontextu projektu |
-| **Haiku 4.5** | Dokumentarista | **Pouze** generování `docs/data/{projekt}.json` z CLAUDE.md → HTML | `docs/data/{projekt}.json` pipeline — čte, negeneruje CLAUDE.md |
+| **Opus 4.6** | Architekt + šéf | Návrh architektury, obsah a struktura MD/JSON, audit, specifikace, review | Nové systémy, architektonická rozhodnutí, review workerů |
+| **Sonnet 4.6** | SW inženýr | Implementace **přesně** dle Opus specifikace, kód + **vlastník všech `CLAUDE.md`** | Psaní kódu, úpravy souborů, aktualizace kontextu projektu |
+| **Haiku 4.5** | Dokumentarista | **Pouze** generování `docs/data/{projekt}.json` dle Opus spec → HTML | `docs/data/{projekt}.json` pipeline — čte, negeneruje CLAUDE.md |
 
-Workflow:
-1. **Opus** navrhne architekturu → zapíše specifikaci do MEMORY.md / MODEL.md
-2. **Sonnet** implementuje dle specifikace + **aktualizuje `{projekt}/CLAUDE.md`**
-3. **Haiku** čte CLAUDE.md → generuje `docs/data/{projekt}.json` → `build.py` renderuje HTML
-4. Dokumentace se automaticky zobrazí v portálu s 📖 ikonou
+### Řídící smyčka (Opus Directive pattern)
 
-**Pravidlo vlastnictví CLAUDE.md:**
-- `{projekt}/CLAUDE.md` = **výhradně Sonnet** — píše, aktualizuje, refaktoruje
-- Haiku smí číst CLAUDE.md pro JSON generování, ale **NESMÍ ho modifikovat**
-- Výjimka: MEMORY.md při `štafeta`/`konec zvonec` — všechny modely
+```
+Opus: DIRECTIVE (co + jak + proč) → MEMORY.md
+  → Worker (Sonnet/Haiku): implementuje PŘESNĚ dle spec
+    → Worker: hlásí DONE + co udělal → MEMORY.md
+      → Opus: review → OK nebo REWORK
+```
 
-Cenový princip: Opus ($75/M out) jen na architektonické rozhodování. Sonnet ($15/M out) na implementaci + CLAUDE.md. Haiku ($4/M out) na JSON/HTML pipeline.
+**Pravidla pro workery (Sonnet, Haiku):**
+1. **Nereinterpretuj** Opus specifikaci — implementuj přesně jak je zadáno
+2. **Neměň design** — pokud nesouhlasíš, zapiš `ESCALATION: důvod` do MEMORY.md a ČEKEJ
+3. **Hlásit dokončení** — po implementaci zapiš do MEMORY.md co jsi udělal
+4. **Neinformuj jiný worker po svém** — Haiku dostává instrukce od Opuse, ne od Sonnetu
+
+### Vlastnictví obsahu
+
+| Co | Kdo rozhoduje | Kdo implementuje |
+|----|--------------|-----------------|
+| Struktura a obsah MD souborů | **Opus** | Sonnet |
+| JSON design (docs pipeline) | **Opus** | Haiku |
+| `{projekt}/CLAUDE.md` | Opus (design) | **Sonnet** (píše) |
+| Kód (Python, JS, ...) | Opus (spec) | **Sonnet** (kóduje) |
+| `docs/data/{projekt}.json` | Opus (spec) | **Haiku** (generuje) |
+
+Cenový princip: Opus ($75/M out) jen na rozhodování + review. Sonnet ($15/M out) na implementaci + CLAUDE.md. Haiku ($4/M out) na JSON/HTML pipeline.
 
 ## Kontextové soubory
 

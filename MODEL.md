@@ -10,7 +10,7 @@
 
 | Datum | Model | Co | Status |
 |-------|-------|----|--------|
-| 2026-02-24 | Opus | fedoraOS docs pipeline (7 kroků: symlink, project.yaml, docserver bugfix, AI_WORKFLOW, MANIFEST, JSON skeleton, build), MANIFEST 7 principů AI paměti | ✅ |
+| 2026-02-24 | Opus | fedoraOS docs pipeline (7 kroků), MANIFEST 7 principů AI paměti, implementace principů 2+4+5 (auto-start, Opus Directive, granularita kontextu) do CLAUDE.md | ✅ |
 | 2026-02-23 | Opus | IC-AFT→IC ATF rename, metadata refaktoring (symlink MEMORY, de-dup Golden Rules, ~/CLAUDE.md root loader, "ulož si práci"), CLAUDE.md pro ic-atf + fedoraOS | ✅ |
 | 2026-02-23 | Opus+Sonnet | IC ATF setup Režim A kompletní, fedoraOS docs (8 kapitol + web :8081), docserver cross-link | ✅ |
 | 2026-02-22 | Sonnet | Golden Rule: {projekt}/CLAUDE.md = Sonnet vlastnictví, Haiku pouze čte | ✅ |
