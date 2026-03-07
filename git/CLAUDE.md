@@ -106,10 +106,10 @@ Správa: přes web UI nebo `gh` CLI (pokud nakonfigurováno pro Gitea)
 - Autentizace: SSH (`~/.ssh/id_ed25519`)
 
 <!-- SYNC:START -->
-<!-- aktualizováno: 2026-02-18 20:18 -->
+<!-- aktualizováno: 2026-03-07 12:22 -->
 
 **Živý stav** *(info-sync.py)*
 
-- Poslední commit: `45ac6e7` — Přidány projekty docs, git; síťové adresy (LAN, Tailscale) do dokumentace
+- Poslední commit: `684ae8a` — Sync: aktualizace SYNC bloků a tabulky projektů (info-sync.py)
 
 <!-- SYNC:END -->

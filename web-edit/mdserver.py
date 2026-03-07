@@ -26,6 +26,7 @@ except ImportError:
 ROOT = pathlib.Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else pathlib.Path(__file__).parent.parent.resolve()
 PORT = int(sys.argv[2]) if len(sys.argv) > 2 else 8765
 BACKUP_DIR = ROOT / 'tmp'
+SHARED_DIR = pathlib.Path.home() / 'Shared'
 
 # Subdirectories to exclude from file listing
 EXCLUDED_DIRS = {'code', 'tmp', 'verze', '.claude'}
@@ -88,6 +89,9 @@ HTML = r"""<!DOCTYPE html>
   .btn-save.saving { background: #fab387; color: #1e1e2e; }
   .btn-saveas { background: #cba6f7; color: #1e1e2e; }
   .btn-saveas:hover { background: #b490e0; }
+  .btn-export { background: #89b4fa; color: #1e1e2e; }
+  .btn-export:hover { background: #74a7e8; }
+  .btn-export.exported { background: #a6e3a1; }
   .btn-shutdown { background: #f38ba8; color: #1e1e2e; margin-left: auto; }
   .btn-shutdown:hover { background: #e06c88; }
 
@@ -182,6 +186,7 @@ HTML = r"""<!DOCTYPE html>
   <span class="filetag" id="filetag"></span>
   <button class="btn btn-save" id="save-btn" onclick="saveFile()" title="Ctrl+S">Uložit</button>
   <button class="btn btn-saveas" id="saveas-btn" onclick="saveAsFile()" title="Uložit jako">Uložit jako</button>
+  <button class="btn btn-export" id="export-btn" onclick="exportHtml()" title="Export HTML do ~/Shared">Export HTML</button>
   <span class="status offline" id="ws-status">Offline</span>
   <span class="users" id="users-info"></span>
   <button class="btn btn-shutdown" onclick="shutdownServer()">Ukončit</button>
@@ -372,6 +377,29 @@ async function saveAsFile() {
     await loadFileList(newName);
   } else {
     alert('Chyba: ' + (data.error || 'neznámá'));
+  }
+}
+
+// ─── Export HTML ──────────────────────────────────────────────────────────────
+async function exportHtml() {
+  if (!currentFile) return;
+  const btn = document.getElementById('export-btn');
+  const md = document.getElementById('editor').value;
+  const html = marked.parse(md || '');
+  const title = currentFile.replace(/\.md$/i, '');
+  const fullHtml = `<!DOCTYPE html>\n<html lang="cs">\n<head>\n  <meta charset="UTF-8">\n  <title>${title}</title>\n  <style>${PREVIEW_CSS}</style>\n</head>\n<body>${html}\n</body>\n</html>`;
+  const res = await fetch('/api/export-html', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ file: currentFile, html: fullHtml })
+  });
+  const data = await res.json();
+  if (data.ok) {
+    btn.textContent = 'Exportováno ✓';
+    btn.className = 'btn btn-export exported';
+    setTimeout(() => { btn.textContent = 'Export HTML'; btn.className = 'btn btn-export'; }, 2000);
+  } else {
+    alert('Export selhal: ' + (data.error || 'neznámá chyba'));
   }
 }
 
@@ -587,6 +615,19 @@ async def handle_save_as(request):
     return web.json_response({'ok': True})
 
 
+async def handle_export_html(request):
+    data = await request.json()
+    filename = data.get('file', '')
+    html = data.get('html', '')
+    if not filename or not filename.endswith('.md'):
+        return web.json_response({'ok': False, 'error': 'Neplatný soubor'})
+    stem = pathlib.Path(filename).stem
+    SHARED_DIR.mkdir(parents=True, exist_ok=True)
+    out_path = SHARED_DIR / f"{stem}.html"
+    out_path.write_text(html, encoding='utf-8')
+    return web.json_response({'ok': True, 'path': str(out_path)})
+
+
 async def handle_shutdown(request):
     """Shut down the server after sending response."""
     import os
@@ -631,6 +672,7 @@ def main():
     app.router.add_post('/api/save',   handle_save)
     app.router.add_post('/api/save-as', handle_save_as)
     app.router.add_post('/api/auto-backup', handle_auto_backup)
+    app.router.add_post('/api/export-html', handle_export_html)
     app.router.add_post('/api/shutdown', handle_shutdown)
     app.router.add_get('/ws',          handle_ws)
 

@@ -1,0 +1,6 @@
+name: servicenow-ai-platform
+display_name: ServiceNow AI Platform
+status: analytical
+type: research
+language: markdown
+description: Analyza ServiceNow AI platformy (Now LLM, RaptorDB, Moveworks). Opus deep analysis hotova.

@@ -133,12 +133,11 @@ Oba servery (docserver :8080 a fedoraOS serve.py :8081) sdílejí:
 - Kód česky, UTF-8
 
 <!-- SYNC:START -->
-<!-- aktualizováno: 2026-02-18 20:18 -->
+<!-- aktualizováno: 2026-03-07 12:22 -->
 
 **Živý stav** *(info-sync.py)*
 
-- Služba `docs` (user service): 🟢 active
 - Port 8080: 🟢 naslouchá
-- Poslední commit: `45ac6e7` — Přidány projekty docs, git; síťové adresy (LAN, Tailscale) do dokumentace
+- Poslední commit: `4613be2` — fedoraOS: Opus review OK, smazán NoMachine z remote tabulky
 
 <!-- SYNC:END -->

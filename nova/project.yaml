@@ -1,0 +1,6 @@
+name: nova
+display_name: Project Nova
+status: concept
+type: architecture
+language: sql
+description: PostgreSQL Holy Trinity architektura (OLTP + Batch + OLAP). 9-layer stack, domain-agnostic. Koncept v2.0, ceka na v3.0.

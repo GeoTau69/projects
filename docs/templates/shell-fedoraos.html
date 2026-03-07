@@ -12,6 +12,7 @@
 <div id="header">
   <h1>FEDORA OS</h1>
   <a class="header-link" id="docs-link">PROJECTS DOCS :8080</a>
+  <a class="header-btn header-btn-help" href="#" onclick="document.getElementById('help-dialog').showModal();return false;" title="O dokumentaci">ⓘ</a>
 </div>
 
 <div id="layout">
@@ -22,9 +23,17 @@
 
   <main id="main">
     <div id="loading">Vyberte kapitolu ze seznamu vlevo.</div>
+    <div id="error-msg"></div>
     <div id="md-content"></div>
   </main>
 </div>
+
+<dialog id="help-dialog" style="background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:2rem;max-width:600px;font-family:'Courier New',monospace;">
+  <div id="help-content" style="font-size:0.85rem;line-height:1.7;">Načítám...</div>
+  <form method="dialog" style="margin-top:1rem;text-align:right;">
+    <button style="background:var(--bg3);color:var(--text2);border:1px solid var(--border);padding:4px 14px;border-radius:3px;cursor:pointer;font-family:inherit;">Zavřít</button>
+  </form>
+</dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"
   onerror="window._markedMissing=true;console.warn('marked.js nedostupný')">
@@ -32,6 +41,20 @@
 <script src="/static/js/fedoraos-viewer.js"></script>
 <script>
 document.getElementById('docs-link').href = `//${location.hostname}:8080/`;
+</script>
+<script>
+// Help dialog — načte MANIFEST.md
+document.getElementById('help-dialog').addEventListener('click', function(e) {
+    if (e.target === this) this.close();
+});
+document.querySelector('a[title="O dokumentaci"]').addEventListener('click', async () => {
+    const el = document.getElementById('help-content');
+    try {
+        const r = await fetch('/api/md?file=MANIFEST.md');
+        const md = await r.text();
+        el.innerHTML = (typeof marked !== 'undefined') ? marked.parse(md) : `<pre>${md}</pre>`;
+    } catch(e) { el.textContent = 'Chyba načítání.'; }
+});
 </script>
 </body>
 </html>

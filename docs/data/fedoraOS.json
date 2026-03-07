@@ -1,8 +1,8 @@
 {
   "project": "fedoraOS",
   "display_name": "fedoraOS",
-  "version": "1.1.0",
-  "updated": "2026-02-24",
+  "version": "1.2.0",
+  "updated": "2026-03-06",
   "description": "Referenční dokumentace pro nastavení OS, hardware, virtualizaci a AI workflow na MoreFine S500+ (Ryzen 9 5900HX, 64 GB RAM, Fedora 43 + Proxmox dual-boot).",
   "status": "active",
   "port": 8081,
@@ -28,6 +28,8 @@
           ["05-sudo-modes", "Local vs remote sudo, AI workflow limitace"],
           ["06-tmux", "Tmux konfigurace, klávesové zkratky, workflow"],
           ["07-claude-code-ai", "Claude Code profily, štafeta pattern, tokeny"],
+          ["08-remote-desktop", "xRDP, tři provozní režimy, flow z Windows"],
+          ["09-cross-platform-agents", "Agenti Win↔Linux, Samba sync, štafeta pattern"],
           ["glossary", "Slovníček pojmů: štafeta, CEC, dead man's switch"]
         ]}
       ]
@@ -186,7 +188,7 @@
         ]},
         {"type": "heading", "text": "Session konvence"},
         {"type": "table", "headers": ["Session", "Účel"], "rows": [
-          ["ic-aft", "ic-aft framework vývoj"],
+          ["ic-atf", "ic-atf framework vývoj"],
           ["proxmox", "Proxmox správa, virsh"],
           ["claude", "Claude Code interaktivní session"],
           ["monitor", "Monitoring, logy, watch příkazy"],
@@ -237,6 +239,90 @@
       ]
     },
     {
+      "id": "remote-desktop",
+      "title": "Remote Desktop",
+      "icon": "🖥️",
+      "blocks": [
+        {"type": "text", "text": "Vzdálený grafický přístup na Fedoru z Windows pomocí xRDP. Tři provozní režimy — xrdp se nespouští automaticky, aktivuje se jen na vyžádání."},
+        {"type": "table", "headers": ["Režim", "Popis", "SSH", "xRDP", "Typické použití"], "rows": [
+          ["local-mode", "Fyzická konzole, GNOME lokálně", "volitelný", "vypnuto", "Práce u stroje"],
+          ["remote-mode", "Vzdálený terminál, bez GUI", "ano", "vypnuto (default)", "Claude Code, tmux, správa"],
+          ["rdp-mode", "Vzdálená plocha přes RDP", "ano", "zapnuto on-demand", "Grafické aplikace z Windows"]
+        ]},
+        {"type": "heading", "text": "Správa xrdp"},
+        {"type": "code", "lang": "bash", "text": "# Ověřit stav\nsudo systemctl status xrdp\n\n# Spustit on-demand\nsudo systemctl start xrdp\n\n# Zastavit po skončení\nsudo systemctl stop xrdp\n\n# Ověřit port\nss -tlnp | grep 3389"},
+        {"type": "heading", "text": "Flow: připojení z Windows"},
+        {"type": "list", "ordered": true, "entries": [
+          "Na Fedoře: <code>sudo systemctl start xrdp</code>",
+          "Na Windows: <code>Win+R</code> → <code>mstsc</code> → Enter",
+          "Zadat IP: LAN <code>192.168.0.101</code> nebo Tailscale <code>100.117.55.88</code>",
+          "Přihlásit se jako <code>geo</code>",
+          "<strong>KRITICKY DŮLEŽITÉ:</strong> Vybrat session typ <strong>Xorg</strong> — NIKOLI Wayland (způsobí black screen)",
+          "Po skončení: <code>sudo systemctl stop xrdp</code>"
+        ]},
+        {"type": "heading", "text": "Co bylo zvažováno a zavrženo"},
+        {"type": "table", "headers": ["Alternativa", "Důvod zamítnutí"], "rows": [
+          ["VNC (TigerVNC)", "Pomalejší přenos, žádný nativní klient na Windows"],
+          ["NoMachine", "Extra instalace na obou stranách, uzavřený protokol NX"],
+          ["GNOME Wayland + xrdp", "Black screen, odmítnuté přihlášení — nutno X11"],
+          ["xrdp autostart", "Zbytečná útočná plocha, port 3389 otevřený trvale"]
+        ]},
+        {"type": "heading", "text": "Přístupové adresy"},
+        {"type": "table", "headers": ["Transport", "IP", "Podmínka"], "rows": [
+          ["LAN přímý", "192.168.0.101:3389", "Domácí síť 192.168.0.0/24"],
+          ["Tailscale (vzdálený)", "100.117.55.88:3389", "Tailscale daemon běží na obou stranách"]
+        ]},
+        {"type": "heading", "text": "Troubleshooting"},
+        {"type": "table", "headers": ["Symptom", "Příčina", "Řešení"], "rows": [
+          ["Black screen po přihlášení", "Wayland session vybrána", "Odhlásit, vybrat Xorg"],
+          ["Odmítnuté přihlášení", "Špatné heslo nebo xrdp neběží", "Ověřit systemctl status xrdp"],
+          ["Port 3389 nedostupný", "xrdp není spuštěn", "sudo systemctl start xrdp"]
+        ]}
+      ]
+    },
+    {
+      "id": "cross-platform-agents",
+      "title": "Cross-platform agenti",
+      "icon": "🔄",
+      "blocks": [
+        {"type": "text", "text": "Provoz Claude Code agentů paralelně na Windows a Linuxu. Sdílená paměť přes Samba share, štafeta pattern pro předávání práce. <strong>Linux = zdroj pravdy.</strong>"},
+        {"type": "heading", "text": "Architektura"},
+        {"type": "code", "lang": "text", "text": "Fedora server (192.168.0.101)          Windows PC\n+---------------------------+          +------------------------+\n| ~/Shared/claude-shared/   |          | Z:\\claude-shared\\      |\n|   memory/MEMORY.md        |<--Samba->|   memory\\MEMORY.md     |\n+---------------------------+          +------------------------+\n| agent-linux               |          | agent-win              |\n| Claude Code (Opus/Sonnet) |          | Claude Code (Sonnet)   |\n+---------------------------+          +------------------------+"},
+        {"type": "heading", "text": "Agent tagging"},
+        {"type": "text", "text": "Každý zápis do sdíleného souboru musí být otagován:"},
+        {"type": "code", "lang": "text", "text": "&lt;!-- last-edit: agent-linux | sonnet | 2026-03-06T14:30 --&gt;"},
+        {"type": "table", "headers": ["Pole", "Hodnoty", "Účel"], "rows": [
+          ["agent-ID", "agent-linux, agent-win", "Identifikace stroje"],
+          ["model", "opus, sonnet, haiku", "Conflict resolution"],
+          ["timestamp", "ISO 8601", "Pořadí zápisů"]
+        ]},
+        {"type": "card", "variant": "info", "title": "Conflict resolution", "text": "1. Vyšší model wins: Opus &gt; Sonnet &gt; Haiku<br>2. Při stejném modelu: Linux wins<br>3. Vždy číst tag před zápisem"},
+        {"type": "heading", "text": "Štafeta pattern"},
+        {"type": "list", "ordered": true, "entries": [
+          "<strong>Agent ukládá:</strong> zapsat stav do MEMORY.md, přidat last-edit tag",
+          "<strong>Agent přebírá:</strong> přečíst MEMORY.md, ověřit tag, pokračovat",
+          "Formát zprávy: <em>\"Štafeta: {co bylo uděláno}, next step: {co zbývá}\"</em>"
+        ]},
+        {"type": "heading", "text": "Samba share — ověření"},
+        {"type": "code", "lang": "bash", "text": "# Na Fedoře\nsudo systemctl status smb nmb\nsmbclient -L localhost -U geo\nls ~/Shared/claude-shared/memory/"},
+        {"type": "code", "lang": "bash", "text": "# Na Windows\nnet use Z: \\\\192.168.0.101\\shared /user:geo\n# Přes Tailscale:\nnet use Z: \\\\100.117.55.88\\shared /user:geo"},
+        {"type": "heading", "text": "Limity paralelních agentů"},
+        {"type": "table", "headers": ["Vrstva", "Limit", "Poznámka"], "rows": [
+          ["Claude Code subagenti", "3–5 doporučeno", "Kontext orchestrátoru se plní"],
+          ["API rate limit (Tier 1)", "~50 req/min", "Sdíleno mezi všemi agenty"],
+          ["Sdílené soubory (zápis)", "max 2 agenti", "Race condition při zápisu"],
+          ["Read-only operace", "neomezeno", "Bezpečné pro libovolný počet"]
+        ]},
+        {"type": "heading", "text": "Troubleshooting"},
+        {"type": "table", "headers": ["Symptom", "Příčina", "Řešení"], "rows": [
+          ["Windows nevidí share", "Samba neběží", "sudo systemctl start smb nmb"],
+          ["Konflikty v MEMORY.md", "Oba agenti psali současně", "Porovnat tagy, Linux wins"],
+          ["CRLF v markdown", "Windows editor", "dos2unix ~/Shared/claude-shared/memory/MEMORY.md"],
+          ["Agent-win nevidí změny", "Samba cache", "net use Z: /delete + znovu mapovat"]
+        ]}
+      ]
+    },
+    {
       "id": "slovnicek",
       "title": "Slovníček",
       "icon": "📖",
@@ -273,6 +359,8 @@
           ["QEMU", "Quick Emulator"],
           ["TAP", "Network TAP (virtuální NIC)"],
           ["UEFI", "Unified Extensible Firmware Interface"],
+          ["SVM", "Secure Virtual Machine (AMD virtualizace)"],
+          ["VG", "Volume Group (LVM)"],
           ["VPN", "Virtual Private Network"]
         ]}
       ]

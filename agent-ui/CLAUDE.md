@@ -141,3 +141,13 @@ python app.py
 - `anthropic` — pip (Claude API backend)
 - HTMX 2.0.4 — CDN (bez build stepu)
 - `_meta/` moduly: `orchestrator`, `billing`, `router`, `conversations`, `plugins/*`
+
+<!-- SYNC:START -->
+<!-- aktualizováno: 2026-03-07 12:22 -->
+
+**Živý stav** *(info-sync.py)*
+
+- Port 8100: 🔴 neodpovídá
+- Poslední commit: `ba00557` — fedoraOS docs 10 sekcí + Worker Self-Check Protocol (DELTA MANIFEST)
+
+<!-- SYNC:END -->

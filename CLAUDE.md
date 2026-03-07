@@ -191,17 +191,20 @@ make list                # Rychlý výpis projektů
 > `make docs` aktualizuje tabulku níže z `project.yaml` souborů (statické sekce výše jsou zachovány).
 
 <!-- PROJEKTY:START -->
-<!-- generováno: 2026-02-24 09:31 -->
+<!-- generováno: 2026-03-07 12:22 -->
 
-| Projekt | Status | Tech | Port | Popis | Detail |
-|---------|--------|------|------|-------|--------|
-| 🟢 `agent-ui/` | active | python | 8100 | Webové rozhraní pro orchestrátor (Flask + HTMX). Das... | `agent-ui/CLAUDE.md` |
-| 🟢 `ai/` | active | python/toolkit | None | Sada nástrojů pro optimalizaci práce s AI v rámci wo... | `ai/CLAUDE.md` |
-| 🟢 `backup-dashboard/` | active | python | 8090 | Webové rozhraní pro správu 3-vrstvového backup systé... | `backup-dashboard/CLAUDE.md` |
-| 🟢 `dashboard/` | active | python | 8099 | Živý přehled stavu všech projektů, služeb a systémov... | `dashboard/CLAUDE.md` |
-| 🟢 `fedoraOS/` | active | markdown/docs | 8081 | Referenční dokumentace pro nastavení OS, hardware, v... | `fedoraOS/CLAUDE.md` |
-| 🟢 `git/` | active | markdown/docs | – | Centrální dokumentace git setupu, workflow a integra... | `git/CLAUDE.md` |
-| 🟢 `ic-atf/` | active | python/testing-framework | – | Automatizovaný testovací framework pro Instance Cont... | `ic-atf/CLAUDE.md` |
-| 🟢 `web-edit/` | active | python | 8765 | Online Markdown editor pro IC dokumentaci s real-tim... | `web-edit/CLAUDE.md` |
+| Projekt | Status | Tech | Port | Živý stav | Popis | Detail |
+|---------|--------|------|------|-----------|-------|--------|
+| 🟢 `agent-ui/` | active | python | 8100 | 🔴 | Webové rozhraní pro orchestrátor (Flask + ... | `agent-ui/CLAUDE.md` |
+| 🟢 `ai/` | active | python/toolkit | None | ❓ | Sada nástrojů pro optimalizaci práce s AI ... | `ai/CLAUDE.md` |
+| 🟢 `backup-dashboard/` | active | python | 8090 | 🟢 | Webové rozhraní pro správu 3-vrstvového ba... | `backup-dashboard/CLAUDE.md` |
+| 🟢 `dashboard/` | active | python | 8099 | 🟢 | Živý přehled stavu všech projektů, služeb ... | `dashboard/CLAUDE.md` |
+| 🟢 `docs/` | active | python | 8080 | 🟢 | Dokumentacni portal a build pipeline. Disc... | `docs/CLAUDE.md` |
+| 🟢 `fedoraOS/` | active | markdown/docs | 8081 | 🟢 | Referenční dokumentace pro nastavení OS, h... | `fedoraOS/CLAUDE.md` |
+| 🟢 `git/` | active | markdown/docs | – | ❓ | Centrální dokumentace git setupu, workflow... | `git/CLAUDE.md` |
+| 🟢 `ic-atf/` | active | python/testing-framework | – | ❓ | Automatizovaný testovací framework pro Ins... | `ic-atf/CLAUDE.md` |
+| ❓ `nova/` | concept | sql/architecture | – | ❓ | PostgreSQL Holy Trinity architektura (OLTP... | `nova/CLAUDE.md` |
+| ❓ `servicenow-ai-platform/` | analytical | markdown/research | – | ❓ | Analyza ServiceNow AI platformy (Now LLM, ... | `servicenow-ai-platform/CLAUDE.md` |
+| 🟢 `web-edit/` | active | python | 8765 | 🟢 | Online Markdown editor pro IC dokumentaci ... | `web-edit/CLAUDE.md` |
 
 <!-- PROJEKTY:END -->

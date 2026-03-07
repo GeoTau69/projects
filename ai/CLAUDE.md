@@ -268,3 +268,12 @@ print(f"Cost: ${resp.cost:.4f}")
 - [ ] Reálné testování `call_api` s Anthropic API klíčem
 - [ ] `agent billing --export csv` pro analýzy nákladů
 - [ ] Quota-aware routing (rate limit headers, error 429 fallback)
+
+<!-- SYNC:START -->
+<!-- aktualizováno: 2026-03-07 12:22 -->
+
+**Živý stav** *(info-sync.py)*
+
+- Poslední commit: `ba00557` — fedoraOS docs 10 sekcí + Worker Self-Check Protocol (DELTA MANIFEST)
+
+<!-- SYNC:END -->
